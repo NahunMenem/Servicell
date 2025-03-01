@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-6 bg-gray-900 text-white min-h-screen">
+    <h1 class="text-3xl font-bold text-center mb-8">Caja del Día ({{ fecha_actual }})</h1>
+
+    <!-- Sección de Totales por Tipo de Pago -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4">Totales por Tipo de Pago</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Totales de Ventas -->
+            <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-4">Ventas</h3>
+                <ul>
+                    {% for tipo_pago, total in total_ventas_por_pago.items() %}
+                    <li class="mb-2">
+                        <span class="font-medium">{{ tipo_pago }}:</span> ${{ total | round(2) }}
+                    </li>
+                    {% else %}
+                    <li>No hay ventas registradas hoy.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Totales de Reparaciones -->
+            <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-4">Reparaciones</h3>
+                <ul>
+                    {% for tipo_pago, total in total_reparaciones_por_pago.items() %}
+                    <li class="mb-2">
+                        <span class="font-medium">{{ tipo_pago }}:</span> ${{ total | round(2) }}
+                    </li>
+                    {% else %}
+                    <li>No hay reparaciones registradas hoy.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Totales Combinados -->
+            <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                <h3 class="text-xl font-semibold mb-4">Totales Combinados</h3>
+                <ul>
+                    {% for tipo_pago, total in total_combinado_por_pago.items() %}
+                    <li class="mb-2">
+                        <span class="font-medium">{{ tipo_pago }}:</span> ${{ total | round(2) }}
+                    </li>
+                    {% else %}
+                    <li>No hay transacciones registradas hoy.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Egresos -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4">Egresos</h2>
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Totales de Egresos por Tipo de Pago -->
+                <div>
+                    <h3 class="text-xl font-semibold mb-4">Totales de Egresos</h3>
+                    <ul>
+                        {% for tipo_pago, total in total_egresos_por_pago.items() %}
+                        <li class="mb-2">
+                            <span class="font-medium">{{ tipo_pago }}:</span> ${{ total | round(2) }}
+                        </li>
+                        {% else %}
+                        <li>No hay egresos registrados hoy.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Lista de Egresos -->
+                <div>
+                    <h3 class="text-xl font-semibold mb-4">Detalle de Egresos</h3>
+                    <ul>
+                        {% for egreso in egresos %}
+                        <li class="mb-2">
+                            <span class="font-medium">{{ egreso.descripcion }}:</span> ${{ egreso.monto | round(2) }} ({{ egreso.tipo_pago }})
+                        </li>
+                        {% else %}
+                        <li>No hay egresos registrados hoy.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Neto por Tipo de Pago -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4">Neto por Tipo de Pago</h2>
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <ul>
+                {% for tipo_pago, neto in neto_por_pago.items() %}
+                <li class="mb-2">
+                    <span class="font-medium">{{ tipo_pago }}:</span> ${{ neto | round(2) }}
+                </li>
+                {% else %}
+                <li>No hay transacciones registradas hoy.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Botón para volver al inicio -->
+    <div class="mt-8 text-center">
+        <a href="{{ url_for('index') }}" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Volver al Inicio</a>
+    </div>
+</div>
+{% endblock %}
