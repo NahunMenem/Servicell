@@ -2,6 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, session,fl
 import sqlite3
 from datetime import datetime, timedelta
 import pytz
+import os
+from flask import send_file
+
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Necesario para usar sesiones
@@ -116,7 +119,7 @@ def login():
         if user and user['password'] == password:
             session['username'] = user['username']
             session['role'] = user['role']
-            flash('Login exitoso!', 'success')
+
             return redirect(url_for('inicio'))  # Redirige a la página principal después del login
         else:
             flash('Usuario o contraseña incorrectos', 'error')
@@ -130,6 +133,26 @@ def inicio():
         return redirect(url_for('login'))  # Redirige al login si no está autenticado
     return render_template('inicio.html')
 
+# Ruta para exportar la base de datos
+@app.route('/exportar_db')
+def exportar_db():
+    # Ruta al archivo de la base de datos
+    db_path = 'negocio.db'  # Ajusta esta ruta según la ubicación de tu base de datos
+
+    # Verificar si el archivo existe
+    if not os.path.exists(db_path):
+        return "La base de datos no existe.", 404
+
+    # Enviar el archivo como una descarga
+    return send_file(
+        db_path,
+        as_attachment=True,
+        download_name='negocio_export.db',  # Nombre del archivo descargado
+        mimetype='application/octet-stream'
+    )
+
+
+
 # Ruta para el logout
 @app.route('/logout')
 def logout():
@@ -138,7 +161,7 @@ def logout():
     flash('Has cerrado sesión correctamente.', 'success')
     return redirect(url_for('login'))
 
-# Ruta para registrar ventas---------------------------------------------
+# Ruta para registrar ventas
 @app.route('/registrar_venta', methods=['GET', 'POST'])
 def registrar_venta():
     conn = get_db_connection()
@@ -153,8 +176,8 @@ def registrar_venta():
         if 'buscar' in request.form:
             busqueda = request.form['busqueda']
             cursor.execute('''
-            SELECT id, nombre, codigo_barras, stock, precio FROM productos
-            WHERE codigo_barras = ? OR nombre LIKE ?
+                SELECT id, nombre, codigo_barras, stock, precio FROM productos
+                WHERE codigo_barras = ? OR nombre LIKE ?
             ''', (busqueda, f'%{busqueda}%'))
             productos = cursor.fetchall()
             conn.close()
@@ -170,23 +193,28 @@ def registrar_venta():
             producto = cursor.fetchone()
 
             if producto:
-                # Verificar que el precio no sea None
                 if producto['precio'] is not None:
-                    # Agregar producto al carrito
-                    item = {
-                        'id': producto['id'],
-                        'nombre': producto['nombre'],
-                        'precio': producto['precio'],
-                        'cantidad': cantidad
-                    }
-                    session['carrito'].append(item)
-                    session.modified = True  # Marcar la sesión como modificada
+                    # Verificar si hay suficiente stock
+                    cursor.execute('SELECT stock FROM productos WHERE id = ?', (producto_id,))
+                    stock = cursor.fetchone()['stock']
+
+                    if stock >= cantidad:
+                        # Agregar producto al carrito
+                        item = {
+                            'id': producto['id'],
+                            'nombre': producto['nombre'],
+                            'precio': producto['precio'],
+                            'cantidad': cantidad
+                        }
+                        session['carrito'].append(item)
+                        session.modified = True
+            
+                    else:
+                        flash(f'No hay suficiente stock para "{producto["nombre"]}"', 'error')
                 else:
-                    conn.close()
-                    return f"Error: El producto '{producto['nombre']}' no tiene un precio definido."
+                    flash(f'El producto "{producto["nombre"]}" no tiene un precio definido', 'error')
             else:
-                conn.close()
-                return "Error: Producto no encontrado."
+                flash('Producto no encontrado', 'error')
 
         # Agregar venta manual al carrito
         elif 'agregar_manual' in request.form:
@@ -202,13 +230,14 @@ def registrar_venta():
                 'cantidad': cantidad
             }
             session['carrito'].append(item)
-            session.modified = True  # Marcar la sesión como modificada
+            session.modified = True
+            flash(f'Servicio técnico "{nombre}" agregado al carrito', 'success')
 
         # Registrar la venta (tanto normal como manual)
         elif 'registrar' in request.form:
             if not session['carrito']:
-                conn.close()
-                return "El carrito está vacío. Agrega productos antes de registrar la venta."
+                flash('El carrito está vacío. Agrega productos antes de registrar la venta', 'error')
+                return redirect(url_for('registrar_venta'))
 
             # Obtener el tipo de pago y el DNI del cliente
             tipo_pago = request.form['tipo_pago']
@@ -231,30 +260,33 @@ def registrar_venta():
                     if producto and producto['stock'] >= cantidad:
                         # Registrar la venta en la tabla 'ventas'
                         cursor.execute('''
-                        INSERT INTO ventas (producto_id, cantidad, fecha, nombre_manual, precio_manual, tipo_pago, dni_cliente)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                            INSERT INTO ventas (producto_id, cantidad, fecha, nombre_manual, precio_manual, tipo_pago, dni_cliente)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
                         ''', (producto_id, cantidad, fecha_actual, None, None, tipo_pago, dni_cliente))
 
                         # Actualizar el stock
                         cursor.execute('UPDATE productos SET stock = stock - ? WHERE id = ?', (cantidad, producto_id))
                     else:
                         conn.close()
-                        return f"No hay suficiente stock para el producto: {nombre}"
+                        flash(f'No hay suficiente stock para el producto: {nombre}', 'error')
+                        return redirect(url_for('registrar_venta'))
                 else:
                     # Registrar venta manual en la tabla 'reparaciones'
                     cursor.execute('''
-                    INSERT INTO reparaciones (nombre_servicio, precio, cantidad, tipo_pago, dni_cliente, fecha)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT INTO reparaciones (nombre_servicio, precio, cantidad, tipo_pago, dni_cliente, fecha)
+                        VALUES (?, ?, ?, ?, ?, ?)
                     ''', (nombre, precio, cantidad, tipo_pago, dni_cliente, fecha_actual))
 
             conn.commit()
             conn.close()
             session.pop('carrito', None)  # Vaciar el carrito después de registrar la venta
-            return redirect(url_for('index'))
+            flash('Venta registrada con éxito', 'success')
+            return redirect(url_for('registrar_venta'))
 
         # Vaciar el carrito
         elif 'vaciar' in request.form:
             session.pop('carrito', None)
+            flash('Carrito vaciado con éxito', 'success')
             return redirect(url_for('registrar_venta'))
 
     # Calcular el total del carrito
@@ -321,7 +353,10 @@ def productos_por_agotarse():
     conn.close()
     return render_template('productos_por_agotarse.html', productos=productos)
 
-# Ruta para ver las últimas 10 ventas del día----------------------------
+
+
+
+# Ruta principal para mostrar las ventas y reparaciones
 @app.route('/ultimas_ventas')
 def ultimas_ventas():
     conn = get_db_connection()
@@ -331,7 +366,11 @@ def ultimas_ventas():
     argentina_tz = pytz.timezone('America/Argentina/Buenos_Aires')
     fecha_actual = datetime.now(argentina_tz).strftime('%Y-%m-%d')  # Solo la fecha, sin la hora
 
-    # Consultar todas las ventas del día
+    # Obtener las fechas desde y hasta de los parámetros de la URL
+    fecha_desde = request.args.get('fecha_desde', fecha_actual)
+    fecha_hasta = request.args.get('fecha_hasta', fecha_actual)
+
+    # Consultar todas las ventas en el rango de fechas
     cursor.execute('''
         SELECT 
             v.id AS venta_id,
@@ -343,12 +382,12 @@ def ultimas_ventas():
             v.tipo_pago
         FROM ventas v
         JOIN productos p ON v.producto_id = p.id
-        WHERE DATE(v.fecha) = ?
+        WHERE DATE(v.fecha) BETWEEN ? AND ?
         ORDER BY v.fecha DESC
-    ''', (fecha_actual,))
+    ''', (fecha_desde, fecha_hasta))
     ventas = cursor.fetchall()
 
-    # Consultar todas las reparaciones del día
+    # Consultar todas las reparaciones en el rango de fechas
     cursor.execute('''
         SELECT 
             id AS reparacion_id,
@@ -359,9 +398,9 @@ def ultimas_ventas():
             fecha,
             tipo_pago
         FROM reparaciones
-        WHERE DATE(fecha) = ?
+        WHERE DATE(fecha) BETWEEN ? AND ?
         ORDER BY fecha DESC
-    ''', (fecha_actual,))
+    ''', (fecha_desde, fecha_hasta))
     reparaciones = cursor.fetchall()
 
     # Calcular el total por tipo de pago para ventas
@@ -393,8 +432,62 @@ def ultimas_ventas():
         reparaciones=reparaciones,
         fecha_actual=fecha_actual,
         total_ventas_por_pago=total_ventas_por_pago,
-        total_reparaciones_por_pago=total_reparaciones_por_pago
+        total_reparaciones_por_pago=total_reparaciones_por_pago,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta
     )
+
+
+
+# Ruta para eliminar una venta
+@app.route('/anular_venta/<int:venta_id>', methods=['POST'])
+def anular_venta(venta_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Verificar si la venta existe
+        cursor.execute('SELECT * FROM ventas WHERE id = ?', (venta_id,))
+        venta = cursor.fetchone()
+
+        if not venta:
+            return jsonify({'success': False, 'message': 'Venta no encontrada'}), 404
+
+        # Eliminar la venta
+        cursor.execute('DELETE FROM ventas WHERE id = ?', (venta_id,))
+        conn.commit()
+
+        return jsonify({'success': True, 'message': 'Venta eliminada correctamente'}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        conn.close()
+
+# Ruta para eliminar una reparación
+@app.route('/anular_reparacion/<int:reparacion_id>', methods=['POST'])
+def anular_reparacion(reparacion_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Verificar si la reparación existe
+        cursor.execute('SELECT * FROM reparaciones WHERE id = ?', (reparacion_id,))
+        reparacion = cursor.fetchone()
+
+        if not reparacion:
+            return jsonify({'success': False, 'message': 'Reparación no encontrada'}), 404
+
+        # Eliminar la reparación
+        cursor.execute('DELETE FROM reparaciones WHERE id = ?', (reparacion_id,))
+        conn.commit()
+
+        return jsonify({'success': True, 'message': 'Reparación eliminada correctamente'}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        conn.close()
 
 # Ruta para egresos----------------------------------------------------
 @app.route('/egresos', methods=['GET', 'POST'])
@@ -437,105 +530,74 @@ def dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Obtener la fecha seleccionada o usar la fecha actual por defecto
-    fecha_seleccionada = request.args.get('fecha', datetime.now().strftime('%Y-%m-%d'))
+    # Obtener las fechas seleccionadas o usar la fecha actual por defecto
+    fecha_desde = request.args.get('fecha_desde', datetime.now().strftime('%Y-%m-%d'))
+    fecha_hasta = request.args.get('fecha_hasta', datetime.now().strftime('%Y-%m-%d'))
 
-    # Calcular el total de ventas de productos del día seleccionado
-    cursor.execute('''
-    SELECT SUM(v.cantidad * COALESCE(p.precio, v.precio_manual)) AS total_ventas_productos
-    FROM ventas v
-    LEFT JOIN productos p ON v.producto_id = p.id
-    WHERE DATE(v.fecha) = ?
-    ''', (fecha_seleccionada,))
-    total_ventas_productos_dia = cursor.fetchone()['total_ventas_productos'] or 0
-
-    # Calcular el total de ventas de reparaciones del día seleccionado
-    cursor.execute('''
-    SELECT SUM(precio) AS total_ventas_reparaciones
-    FROM reparaciones
-    WHERE DATE(fecha) = ?
-    ''', (fecha_seleccionada,))
-    total_ventas_reparaciones_dia = cursor.fetchone()['total_ventas_reparaciones'] or 0
-
-    total_ventas_dia = total_ventas_productos_dia + total_ventas_reparaciones_dia
-
-    # Calcular el total de egresos del día seleccionado
-    cursor.execute('''
-    SELECT SUM(monto) AS total_egresos
-    FROM egresos
-    WHERE DATE(fecha) = ?
-    ''', (fecha_seleccionada,))
-    total_egresos_dia = cursor.fetchone()['total_egresos'] or 0
-
-    # Calcular el costo de los productos vendidos en el día seleccionado
-    cursor.execute('''
-    SELECT SUM(v.cantidad * p.precio_costo) AS total_costo
-    FROM ventas v
-    JOIN productos p ON v.producto_id = p.id
-    WHERE DATE(v.fecha) = ?
-    ''', (fecha_seleccionada,))
-    total_costo_dia = cursor.fetchone()['total_costo'] or 0
-
-    # Calcular la ganancia del día seleccionado
-    ganancia_dia = total_ventas_dia - total_egresos_dia - total_costo_dia
-
-    # Obtener la fecha de inicio y fin de la semana actual
-    hoy = datetime.now()
-    inicio_semana = (hoy - timedelta(days=hoy.weekday())).strftime('%Y-%m-%d')  # Lunes de esta semana
-    fin_semana = (hoy + timedelta(days=(6 - hoy.weekday()))).strftime('%Y-%m-%d')  # Domingo de esta semana
-
-    # Calcular el total de ventas de productos de la semana
+    # Calcular el total de ventas de productos en el rango de fechas
     cursor.execute('''
     SELECT SUM(v.cantidad * COALESCE(p.precio, v.precio_manual)) AS total_ventas_productos
     FROM ventas v
     LEFT JOIN productos p ON v.producto_id = p.id
     WHERE DATE(v.fecha) BETWEEN ? AND ?
-    ''', (inicio_semana, fin_semana))
+    ''', (fecha_desde, fecha_hasta))
     total_ventas_productos = cursor.fetchone()['total_ventas_productos'] or 0
 
-    # Calcular el total de ventas de reparaciones de la semana
+    # Calcular el total de ventas de reparaciones en el rango de fechas
     cursor.execute('''
     SELECT SUM(precio) AS total_ventas_reparaciones
     FROM reparaciones
     WHERE DATE(fecha) BETWEEN ? AND ?
-    ''', (inicio_semana, fin_semana))
+    ''', (fecha_desde, fecha_hasta))
     total_ventas_reparaciones = cursor.fetchone()['total_ventas_reparaciones'] or 0
 
     total_ventas = total_ventas_productos + total_ventas_reparaciones
 
-    # Calcular el total de egresos de la semana
+    # Calcular el total de egresos en el rango de fechas
     cursor.execute('''
     SELECT SUM(monto) AS total_egresos
     FROM egresos
     WHERE DATE(fecha) BETWEEN ? AND ?
-    ''', (inicio_semana, fin_semana))
+    ''', (fecha_desde, fecha_hasta))
     total_egresos = cursor.fetchone()['total_egresos'] or 0
 
-    # Calcular el costo de los productos vendidos en la semana
+    # Calcular el costo de los productos vendidos en el rango de fechas
     cursor.execute('''
     SELECT SUM(v.cantidad * p.precio_costo) AS total_costo
     FROM ventas v
     JOIN productos p ON v.producto_id = p.id
     WHERE DATE(v.fecha) BETWEEN ? AND ?
-    ''', (inicio_semana, fin_semana))
+    ''', (fecha_desde, fecha_hasta))
     total_costo = cursor.fetchone()['total_costo'] or 0
 
-    # Calcular la ganancia de la semana
-    ganancia_semana = total_ventas - total_egresos - total_costo
+    # Calcular la ganancia en el rango de fechas
+    ganancia = total_ventas - total_egresos - total_costo
+
+    # Obtener la distribución de ventas por tipo (productos vs. reparaciones)
+    cursor.execute('''
+    SELECT 'Productos' AS tipo, SUM(v.cantidad * COALESCE(p.precio, v.precio_manual)) AS total
+    FROM ventas v
+    LEFT JOIN productos p ON v.producto_id = p.id
+    WHERE DATE(v.fecha) BETWEEN ? AND ?
+    UNION ALL
+    SELECT 'Reparaciones' AS tipo, SUM(precio) AS total
+    FROM reparaciones
+    WHERE DATE(fecha) BETWEEN ? AND ?
+    ''', (fecha_desde, fecha_hasta, fecha_desde, fecha_hasta))
+    distribucion_ventas = cursor.fetchall()
 
     conn.close()
+
     return render_template('dashboard.html', 
                           total_ventas=total_ventas, 
                           total_egresos=total_egresos, 
                           total_costo=total_costo, 
-                          ganancia_semana=ganancia_semana,
-                          inicio_semana=inicio_semana,
-                          fin_semana=fin_semana,
-                          total_ventas_dia=total_ventas_dia,
-                          total_egresos_dia=total_egresos_dia,
-                          total_costo_dia=total_costo_dia,
-                          ganancia_dia=ganancia_dia,
-                          fecha_seleccionada=fecha_seleccionada)
+                          ganancia=ganancia,
+                          total_ventas_productos=total_ventas_productos,  # Asegúrate de pasar este valor
+                          total_ventas_reparaciones=total_ventas_reparaciones,  # Asegúrate de pasar este valor
+                          distribucion_ventas=distribucion_ventas,
+                          fecha_desde=fecha_desde,
+                          fecha_hasta=fecha_hasta)
 #prueba----------------------------------------------------
 @app.route('/resumen_semanal')
 def resumen_semanal():
@@ -565,7 +627,9 @@ def resumen_semanal():
     return render_template('resumen_semanal.html', resumen=resumen)
 
 
-# Ruta para la caja----------------------------------
+
+
+
 @app.route('/caja')
 def caja():
     conn = get_db_connection()
@@ -573,9 +637,13 @@ def caja():
 
     # Obtener la fecha actual en la zona horaria de Argentina
     argentina_tz = pytz.timezone('America/Argentina/Buenos_Aires')
-    fecha_actual = datetime.now(argentina_tz).strftime('%Y-%m-%d')  # Solo la fecha, sin la hora
+    hoy = datetime.now(argentina_tz).date()
 
-    # Consultar todas las ventas del día
+    # Obtener parámetros de la URL (fechas personalizadas)
+    fecha_desde = request.args.get('fecha_desde', hoy.strftime('%Y-%m-%d'))  # Por defecto: hoy
+    fecha_hasta = request.args.get('fecha_hasta', hoy.strftime('%Y-%m-%d'))  # Por defecto: hoy
+
+    # Consultar todas las ventas del período seleccionado
     cursor.execute('''
         SELECT 
             v.id AS venta_id,
@@ -587,12 +655,12 @@ def caja():
             v.tipo_pago
         FROM ventas v
         JOIN productos p ON v.producto_id = p.id
-        WHERE DATE(v.fecha) = ?
+        WHERE DATE(v.fecha) BETWEEN ? AND ?
         ORDER BY v.fecha DESC
-    ''', (fecha_actual,))
+    ''', (fecha_desde, fecha_hasta))
     ventas = cursor.fetchall()
 
-    # Consultar todas las reparaciones del día
+    # Consultar todas las reparaciones del período seleccionado
     cursor.execute('''
         SELECT 
             id AS reparacion_id,
@@ -603,12 +671,12 @@ def caja():
             fecha,
             tipo_pago
         FROM reparaciones
-        WHERE DATE(fecha) = ?
+        WHERE DATE(fecha) BETWEEN ? AND ?
         ORDER BY fecha DESC
-    ''', (fecha_actual,))
+    ''', (fecha_desde, fecha_hasta))
     reparaciones = cursor.fetchall()
 
-    # Consultar todos los egresos del día
+    # Consultar todos los egresos del período seleccionado
     cursor.execute('''
         SELECT 
             id AS egreso_id,
@@ -617,9 +685,9 @@ def caja():
             tipo_pago,
             fecha
         FROM egresos
-        WHERE DATE(fecha) = ?
+        WHERE DATE(fecha) BETWEEN ? AND ?
         ORDER BY fecha DESC
-    ''', (fecha_actual,))
+    ''', (fecha_desde, fecha_hasta))
     egresos = cursor.fetchall()
 
     # Calcular el total por tipo de pago para ventas
@@ -672,178 +740,13 @@ def caja():
     # Pasar los datos a la plantilla
     return render_template(
         'caja.html',
-        fecha_actual=fecha_actual,
-        total_ventas_por_pago=total_ventas_por_pago,
-        total_reparaciones_por_pago=total_reparaciones_por_pago,
-        total_combinado_por_pago=total_combinado_por_pago,
-        total_egresos_por_pago=total_egresos_por_pago,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
         neto_por_pago=neto_por_pago
     )
-
-
-@app.route('/caja_semanal')
-def caja_semanal():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # Obtener la fecha actual en la zona horaria de Argentina
-    argentina_tz = pytz.timezone('America/Argentina/Buenos_Aires')
-    hoy = datetime.now(argentina_tz)
-
-    # Obtener parámetros de la URL (semana o mes)
-    periodo = request.args.get('periodo', 'semana_actual')  # Por defecto: semana actual
-    if periodo == 'semana_pasada':
-        inicio_semana = hoy - timedelta(days=hoy.weekday() + 7)  # Lunes de la semana pasada
-        fin_semana = inicio_semana + timedelta(days=6)  # Domingo de la semana pasada
-    elif periodo == 'mes_actual':
-        inicio_semana = hoy.replace(day=1)  # Primer día del mes actual
-        fin_semana = (inicio_semana + timedelta(days=32)).replace(day=1) - timedelta(days=1)  # Último día del mes actual
-    elif periodo == 'mes_anterior':
-        primer_dia_mes_actual = hoy.replace(day=1)
-        inicio_semana = (primer_dia_mes_actual - timedelta(days=1)).replace(day=1)  # Primer día del mes anterior
-        fin_semana = primer_dia_mes_actual - timedelta(days=1)  # Último día del mes anterior
-    else:  # Semana actual (por defecto)
-        inicio_semana = hoy - timedelta(days=hoy.weekday())  # Lunes de la semana actual
-        fin_semana = inicio_semana + timedelta(days=6)  # Domingo de la semana actual
-
-    # Formatear fechas para la consulta SQL
-    inicio_semana_str = inicio_semana.strftime('%Y-%m-%d')
-    fin_semana_str = fin_semana.strftime('%Y-%m-%d')
-
-    # Consultar todas las ventas del período seleccionado
-    cursor.execute('''
-        SELECT 
-            v.id AS venta_id,
-            p.nombre AS nombre_producto,
-            v.cantidad,
-            p.precio AS precio_unitario,
-            (v.cantidad * p.precio) AS total,
-            v.fecha,
-            v.tipo_pago
-        FROM ventas v
-        JOIN productos p ON v.producto_id = p.id
-        WHERE DATE(v.fecha) BETWEEN ? AND ?
-        ORDER BY v.fecha DESC
-    ''', (inicio_semana_str, fin_semana_str))
-    ventas = cursor.fetchall()
-
-    # Consultar todas las reparaciones del período seleccionado
-    cursor.execute('''
-        SELECT 
-            id AS reparacion_id,
-            nombre_servicio AS nombre_servicio,
-            cantidad,
-            precio AS precio_unitario,
-            (cantidad * precio) AS total,
-            fecha,
-            tipo_pago
-        FROM reparaciones
-        WHERE DATE(fecha) BETWEEN ? AND ?
-        ORDER BY fecha DESC
-    ''', (inicio_semana_str, fin_semana_str))
-    reparaciones = cursor.fetchall()
-
-    # Consultar todos los egresos del período seleccionado
-    cursor.execute('''
-        SELECT 
-            id AS egreso_id,
-            descripcion,
-            monto,
-            tipo_pago,
-            fecha
-        FROM egresos
-        WHERE DATE(fecha) BETWEEN ? AND ?
-        ORDER BY fecha DESC
-    ''', (inicio_semana_str, fin_semana_str))
-    egresos = cursor.fetchall()
-
-    # Calcular el total por tipo de pago para ventas
-    total_ventas_por_pago = {}
-    for venta in ventas:
-        tipo_pago = venta['tipo_pago']
-        total = venta['total']
-        if tipo_pago in total_ventas_por_pago:
-            total_ventas_por_pago[tipo_pago] += total
-        else:
-            total_ventas_por_pago[tipo_pago] = total
-
-    # Calcular el total por tipo de pago para reparaciones
-    total_reparaciones_por_pago = {}
-    for reparacion in reparaciones:
-        tipo_pago = reparacion['tipo_pago']
-        total = reparacion['total']
-        if tipo_pago in total_reparaciones_por_pago:
-            total_reparaciones_por_pago[tipo_pago] += total
-        else:
-            total_reparaciones_por_pago[tipo_pago] = total
-
-    # Calcular el total combinado por tipo de pago (ventas + reparaciones)
-    total_combinado_por_pago = {}
-    for tipo_pago, total in total_ventas_por_pago.items():
-        total_combinado_por_pago[tipo_pago] = total_combinado_por_pago.get(tipo_pago, 0) + total
-    for tipo_pago, total in total_reparaciones_por_pago.items():
-        total_combinado_por_pago[tipo_pago] = total_combinado_por_pago.get(tipo_pago, 0) + total
-
-    # Calcular el total de egresos por tipo de pago
-    total_egresos_por_pago = {}
-    for egreso in egresos:
-        tipo_pago = egreso['tipo_pago']
-        monto = egreso['monto']
-        if tipo_pago in total_egresos_por_pago:
-            total_egresos_por_pago[tipo_pago] += monto
-        else:
-            total_egresos_por_pago[tipo_pago] = monto
-
-    # Calcular el neto por tipo de pago (total combinado - egresos correspondientes)
-    neto_por_pago = {}
-    for tipo_pago, total in total_combinado_por_pago.items():
-        # Obtener los egresos para este tipo de pago (si no hay, usar 0)
-        egresos_tipo_pago = total_egresos_por_pago.get(tipo_pago, 0)
-        # Calcular el neto
-        neto_por_pago[tipo_pago] = total - egresos_tipo_pago
-
-    # Obtener ventas mensuales para el gráfico
-    cursor.execute('''
-        SELECT 
-            strftime('%Y-%m', fecha) AS mes,
-            SUM(total) AS total_ventas
-        FROM ventas
-        WHERE strftime('%Y', fecha) = strftime('%Y', 'now')
-        GROUP BY mes
-        ORDER BY mes
-    ''')
-    ventas_mensuales = cursor.fetchall()
-
-    # Obtener ventas semanales para el gráfico (últimas 4 semanas)
-    cursor.execute('''
-        SELECT 
-            strftime('%Y-%W', fecha) AS semana,
-            SUM(total) AS total_ventas
-        FROM ventas
-        WHERE fecha >= date('now', '-28 days')
-        GROUP BY semana
-        ORDER BY semana
-        LIMIT 4
-    ''')
-    ventas_semanales = cursor.fetchall()
-
-    conn.close()
-
-    # Pasar los datos a la plantilla
-    return render_template(
-        'caja_semanal.html',
-        inicio_semana=inicio_semana_str,
-        fin_semana=fin_semana_str,
-        total_ventas_por_pago=total_ventas_por_pago,
-        total_reparaciones_por_pago=total_reparaciones_por_pago,
-        total_combinado_por_pago=total_combinado_por_pago,
-        total_egresos_por_pago=total_egresos_por_pago,
-        neto_por_pago=neto_por_pago,
-        periodo_seleccionado=periodo,
-        ventas_mensuales=ventas_mensuales,
-        ventas_semanales=ventas_semanales
-    )
 # Ruta para reparaciones----------------------------------
+from datetime import datetime, timedelta
+
 @app.route('/reparaciones', methods=['GET', 'POST'])
 def reparaciones():
     conn = get_db_connection()
@@ -870,17 +773,21 @@ def reparaciones():
         ''', (tipo_reparacion, marca, modelo, tecnico, monto, nombre_cliente, telefono, nro_orden, fecha, hora))
         conn.commit()
 
-    # Obtener los últimos equipos cargados en la semana actual
-    fecha_inicio = datetime.now() - timedelta(days=7)
-    cursor.execute("SELECT * FROM equipos WHERE fecha >= ?", (fecha_inicio.strftime('%Y-%m-%d'),))
+    # Obtener las fechas de filtro desde la URL
+    fecha_desde = request.args.get('fecha_desde', (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d'))
+    fecha_hasta = request.args.get('fecha_hasta', datetime.now().strftime('%Y-%m-%d'))
+
+    # Obtener los últimos equipos cargados en el rango de fechas seleccionado
+    cursor.execute("SELECT * FROM equipos WHERE fecha >= ? AND fecha <= ?", (fecha_desde, fecha_hasta))
     ultimos_equipos = cursor.fetchall()
 
-    # Obtener la cantidad de equipos por técnico
+    # Obtener la cantidad de equipos por técnico en el rango de fechas seleccionado
     cursor.execute('''
         SELECT tecnico, COUNT(*) as cantidad
         FROM equipos
+        WHERE fecha >= ? AND fecha <= ?
         GROUP BY tecnico
-    ''')
+    ''', (fecha_desde, fecha_hasta))
     datos_tecnicos = cursor.fetchall()
 
     conn.close()
@@ -891,9 +798,10 @@ def reparaciones():
     return render_template(
         'reparaciones.html',
         ultimos_equipos=ultimos_equipos,
-        equipos_por_tecnico=equipos_por_tecnico
+        equipos_por_tecnico=equipos_por_tecnico,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta
     )
-
 # Ruta para eliminar reparaciones----------------------------------
 @app.route('/eliminar_reparacion/<int:id>', methods=['POST'])
 def eliminar_reparacion(id):
@@ -987,7 +895,11 @@ def mercaderia_fallada():
     return render_template('mercaderia_fallada.html', historial=historial)
 
 
-# Ruta para productos----------------------------------
+
+
+
+
+# Ruta para productos stock----------------------------------
 @app.route('/agregar_stock', methods=['GET', 'POST'])
 def agregar_stock():
     conn = get_db_connection()
@@ -1050,17 +962,26 @@ def agregar_stock():
             return redirect(url_for('agregar_stock'))
 
         # Obtener productos filtrados por búsqueda (si existe)
-        if busqueda:
-            cursor.execute('''
-            SELECT id, nombre, codigo_barras, stock, precio, precio_costo
-            FROM productos
-            WHERE nombre LIKE ? OR codigo_barras LIKE ?
-            ''', (f'%{busqueda}%', f'%{busqueda}%'))
-        else:
-            # Si no hay búsqueda, obtener todos los productos
-            cursor.execute('SELECT id, nombre, codigo_barras, stock, precio, precio_costo FROM productos')
+        try:
+            if busqueda:
+                cursor.execute('''
+                SELECT id, nombre, codigo_barras, stock, precio, precio_costo
+                FROM productos
+                WHERE nombre LIKE ? OR codigo_barras LIKE ?
+                ''', (f'%{busqueda}%', f'%{busqueda}%'))
+            else:
+                # Si no hay búsqueda, obtener todos los productos
+                cursor.execute('SELECT id, nombre, codigo_barras, stock, precio, precio_costo FROM productos')
 
-        productos = cursor.fetchall()
+            productos = cursor.fetchall()
+        except Exception as e:
+            conn.rollback()
+            return f"Error: {str(e)}"
+        finally:
+            conn.close()
+
+        return render_template('agregar_stock.html', productos=productos, busqueda=busqueda)
+
     except Exception as e:
         conn.rollback()
         return f"Error: {str(e)}"

@@ -13,7 +13,8 @@
                 </label>
                 <select id="tipo_reparacion" name="tipo_reparacion" class="shadow border rounded w-full py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:shadow-outline">
                     <option value="modulo">Módulo</option>
-                    <option value="pin_carga">Pin de Carga</option>
+                    <option value="pin de carga">Pin de Carga</option>
+                    <option value="Tratamiento humedad">Tratamiento humedad</option>
                     <option value="glass">Glass</option>
                     <option value="otros">Otros</option>
                 </select>
@@ -96,18 +97,43 @@
                 </button>
             </div>
         </form>
-        <!-- Resumen de Equipos por Técnico -->
-            <div class="bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
-                <h2 class="text-xl font-bold text-center mb-6 text-white">Equipos por Técnico</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {% for tecnico, cantidad in equipos_por_tecnico.items() %}
-                        <div class="bg-gray-700 p-4 rounded-lg">
-                            <h3 class="text-lg font-bold text-white">{{ tecnico }}</h3>
-                            <p class="text-gray-300">Equipos asignados: {{ cantidad }}</p>
-                    </div>
-                    {% endfor %}
+
+        <!-- Filtro de Fecha -->
+        <div class="bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <h2 class="text-xl font-bold text-center mb-6 text-white">Filtrar por Fecha</h2>
+            <form method="GET" action="{{ url_for('reparaciones') }}" class="flex flex-wrap justify-center gap-4">
+                <div>
+                    <label class="block text-gray-300 text-sm font-bold mb-2" for="fecha_desde">
+                        Desde
+                    </label>
+                    <input type="date" id="fecha_desde" name="fecha_desde" class="shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:shadow-outline" value="{{ fecha_desde }}">
                 </div>
+                <div>
+                    <label class="block text-gray-300 text-sm font-bold mb-2" for="fecha_hasta">
+                        Hasta
+                    </label>
+                    <input type="date" id="fecha_hasta" name="fecha_hasta" class="shadow appearance-none border rounded py-2 px-3 bg-gray-700 text-gray-300 leading-tight focus:outline-none focus:shadow-outline" value="{{ fecha_hasta }}">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Resumen de Equipos por Técnico -->
+        <div class="bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <h2 class="text-xl font-bold text-center mb-6 text-white">Equipos por Técnico</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for tecnico, cantidad in equipos_por_tecnico.items() %}
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <h3 class="text-lg font-bold text-white">{{ tecnico }}</h3>
+                        <p class="text-gray-300">Equipos asignados: {{ cantidad }}</p>
+                    </div>
+                {% endfor %}
             </div>
+        </div>
 
         <!-- Últimos Teléfonos Cargados -->
         <div class="bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
@@ -125,7 +151,6 @@
                             <th class="px-4 py-2">Teléfono</th>
                             <th class="px-4 py-2">N° Orden</th>
                             <th class="px-4 py-2">Fecha</th>
-                            
                             <th class="px-4 py-2">Estado</th>
                             <th class="px-4 py-2">Acciones</th>
                         </tr>
@@ -142,7 +167,6 @@
                                 <td class="border px-4 py-2">{{ equipo.telefono }}</td>
                                 <td class="border px-4 py-2">{{ equipo.nro_orden }}</td>
                                 <td class="border px-4 py-2">{{ equipo.fecha }}</td>
-                               
                                 <td class="border px-4 py-2">
                                     <select class="estado-reparacion bg-gray-700 text-gray-300 rounded" data-telefono="{{ equipo.telefono }}" data-nro-orden="{{ equipo.nro_orden }}">
                                         <option value="por_reparar" {% if equipo.estado == 'por_reparar' %}selected{% endif %}>Por reparar</option>
@@ -165,8 +189,6 @@
                 </table>
             </div>
         </div>
-
-        
     </div>
 
     <!-- Script para manejar el cambio de estado y enviar WhatsApp -->

@@ -67,19 +67,30 @@
                         <td class="px-4 py-2">${{ producto.precio }}</td>
                         <td class="px-4 py-2">${{ producto.precio_costo }}</td>
                         <td class="px-4 py-2">
-                            
-                       
-                            <!-- Botón para eliminar -->
-                            <form method="POST" class="inline">
+    
+
+                            {% if session.get('role') == 'admin' %}
+                            <!-- Botón para editar -->
+                            <button type="button" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition duration-300" data-bs-toggle="modal" data-bs-target="#editarModal{{ producto.id }}">
+                                Editar
+                            </button>
+                            {% endif %}
+                            <!-- Botón para eliminar con confirmación -->
+                            <form method="POST" class="inline" onsubmit="return confirmarEliminacion()">
                                 <input type="hidden" name="producto_id" value="{{ producto.id }}">
+                                {% if session.get('role') == 'admin' %}
                                 <button type="submit" name="eliminar" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-300">Eliminar</button>
+                                {% endif %}
                             </form>
                             <!-- Botón para sumar stock -->
+
+                            {% if session.get('role') == 'user' %}
                             <form method="POST" class="inline">
                                 <input type="hidden" name="producto_id" value="{{ producto.id }}">
                                 <input type="number" name="cantidad" class="w-16 p-1 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500" min="1" required>
                                 <button type="submit" name="agregar_stock" class="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg transition duration-300">+ Stock</button>
                             </form>
+                            {% endif %}
                         </td>
                     </tr>
 
@@ -131,4 +142,11 @@
         <a href="{{ url_for('index') }}" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Volver al Inicio</a>
     </div>
 </div>
+
+<!-- Script para confirmar la eliminación -->
+<script>
+    function confirmarEliminacion() {
+        return confirm('¿Estás seguro de que deseas eliminar este producto?');
+    }
+</script>
 {% endblock %}

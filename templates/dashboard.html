@@ -8,102 +8,65 @@
     <!-- Selector de fecha -->
     <div class="mb-8 text-center">
         <form action="{{ url_for('dashboard') }}" method="GET" class="inline-block">
-            <label for="fecha" class="text-gray-300">Selecciona una fecha:</label>
-            <input type="date" id="fecha" name="fecha" value="{{ fecha_seleccionada }}" class="ml-2 p-2 bg-gray-700 text-white rounded">
-            <button type="submit" class="ml-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Actualizar</button>
+            <label for="fecha_desde" class="text-gray-300">Desde:</label>
+            <input type="date" id="fecha_desde" name="fecha_desde" value="{{ fecha_desde }}" class="ml-2 p-2 bg-gray-700 text-white rounded">
+            <label for="fecha_hasta" class="text-gray-300 ml-4">Hasta:</label>
+            <input type="date" id="fecha_hasta" name="fecha_hasta" value="{{ fecha_hasta }}" class="ml-2 p-2 bg-gray-700 text-white rounded">
+            <button type="submit" class="ml-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Filtrar</button>
         </form>
     </div>
 
-    <!-- Resumen de la semana -->
-    <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
-        <h2 class="text-2xl font-semibold mb-4">Resumen de la Semana</h2>
-        <p class="text-gray-300"><strong>Fecha de inicio:</strong> {{ inicio_semana }}</p>
-        <p class="text-gray-300"><strong>Fecha de fin:</strong> {{ fin_semana }}</p>
-    </div>
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+        <!-- KPI: Reparaciones -->
+        <div class="bg-gray-800 p-4 rounded-lg shadow-lg text-center">
+            <h3 class="text-lg font-semibold text-gray-300">Reparaciones</h3>
+            <p class="text-2xl font-bold text-blue-400">${{ total_ventas_reparaciones }}</p>
+        </div>
 
-    <!-- Resumen del día -->
-    <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
-        <h2 class="text-2xl font-semibold mb-4">Resumen del Día</h2>
-        <p class="text-gray-300"><strong>Fecha seleccionada:</strong> {{ fecha_seleccionada }}</p>
+        <!-- KPI: Productos -->
+        <div class="bg-gray-800 p-4 rounded-lg shadow-lg text-center">
+            <h3 class="text-lg font-semibold text-gray-300">Productos</h3>
+            <p class="text-2xl font-bold text-green-400">${{ total_ventas_productos }}</p>
+        </div>
+
+        <!-- KPI: Ventas Totales -->
+        <div class="bg-gray-800 p-4 rounded-lg shadow-lg text-center">
+            <h3 class="text-lg font-semibold text-gray-300">Ventas Totales</h3>
+            <p class="text-2xl font-bold text-purple-400">${{ total_ventas }}</p>
+        </div>
+
+        <!-- KPI: Egresos -->
+        <div class="bg-gray-800 p-4 rounded-lg shadow-lg text-center">
+            <h3 class="text-lg font-semibold text-gray-300">Egresos</h3>
+            <p class="text-2xl font-bold text-red-400">-${{ total_egresos }}</p>
+        </div>
+
+        <!-- KPI: Costos -->
+        <div class="bg-gray-800 p-4 rounded-lg shadow-lg text-center">
+            <h3 class="text-lg font-semibold text-gray-300">Costos</h3>
+            <p class="text-2xl font-bold text-yellow-400">-${{ total_costo }}</p>
+        </div>
+
+        <!-- KPI: Ganancia Neta -->
+        <div class="bg-gray-800 p-4 rounded-lg shadow-lg text-center">
+            <h3 class="text-lg font-semibold text-gray-300">Ganancia Neta</h3>
+            <p class="text-2xl font-bold text-teal-400">${{ ganancia }}</p>
+        </div>
     </div>
 
     <!-- Contenedor para las tablas y gráficos -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Tabla de ganancias semanales -->
+        <!-- Gráfico de resumen -->
         <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 class="text-2xl font-semibold mb-4">Ganancia de la Semana</h2>
-            <table class="w-full text-left">
-                <thead>
-                    <tr class="border-b border-gray-700">
-                        <th class="py-2 text-gray-300">Concepto</th>
-                        <th class="py-2 text-gray-300">Monto</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="border-b border-gray-700">
-                        <td class="py-3">Total de Ventas</td>
-                        <td class="py-3">${{ total_ventas }}</td>
-                    </tr>
-                    <tr class="border-b border-gray-700">
-                        <td class="py-3">Total de Egresos</td>
-                        <td class="py-3">-${{ total_egresos }}</td>
-                    </tr>
-                    <tr class="border-b border-gray-700">
-                        <td class="py-3">Costo de Productos Vendidos</td>
-                        <td class="py-3">-${{ total_costo }}</td>
-                    </tr>
-                    <tr>
-                        <td class="py-3 font-semibold">Ganancia Neta</td>
-                        <td class="py-3 font-semibold">${{ ganancia_semana }}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <h2 class="text-2xl font-semibold mb-4">Resumen de Ventas y Gastos</h2>
+            <canvas id="resumenChart" class="w-full"></canvas>
         </div>
 
-        <!-- Tabla de ganancias diarias -->
+        <!-- Gráfico de dona -->
         <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 class="text-2xl font-semibold mb-4">Ganancia del Día</h2>
-            <table class="w-full text-left">
-                <thead>
-                    <tr class="border-b border-gray-700">
-                        <th class="py-2 text-gray-300">Concepto</th>
-                        <th class="py-2 text-gray-300">Monto</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="border-b border-gray-700">
-                        <td class="py-3">Total de Ventas</td>
-                        <td class="py-3">${{ total_ventas_dia }}</td>
-                    </tr>
-                    <tr class="border-b border-gray-700">
-                        <td class="py-3">Total de Egresos</td>
-                        <td class="py-3">-${{ total_egresos_dia }}</td>
-                    </tr>
-                    <tr class="border-b border-gray-700">
-                        <td class="py-3">Costo de Productos Vendidos</td>
-                        <td class="py-3">-${{ total_costo_dia }}</td>
-                    </tr>
-                    <tr>
-                        <td class="py-3 font-semibold">Ganancia Neta</td>
-                        <td class="py-3 font-semibold">${{ ganancia_dia }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Contenedor para los gráficos -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        <!-- Gráfico de resumen semanal -->
-        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 class="text-2xl font-semibold mb-4">Gráfico de Resumen Semanal</h2>
-            <canvas id="resumenSemanalChart" class="w-full"></canvas>
-        </div>
-
-        <!-- Gráfico de resumen diario -->
-        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 class="text-2xl font-semibold mb-4">Gráfico de Resumen Diario</h2>
-            <canvas id="resumenDiarioChart" class="w-full"></canvas>
+            <h2 class="text-2xl font-semibold mb-4">Distribución de Ventas</h2>
+            <canvas id="distribucionVentasChart" class="w-full"></canvas>
         </div>
     </div>
 
@@ -113,12 +76,12 @@
     </div>
 
     <script>
-        // Datos para el gráfico semanal
-        const dataSemanal = {
+        // Datos para el gráfico de resumen
+        const dataResumen = {
             labels: ['Ventas', 'Egresos', 'Costos', 'Ganancia Neta'],
             datasets: [{
-                label: 'Resumen Semanal',
-                data: [{{ total_ventas }}, {{ total_egresos }}, {{ total_costo }}, {{ ganancia_semana }}],
+                label: 'Resumen',
+                data: [{{ total_ventas }}, {{ total_egresos }}, {{ total_costo }}, {{ ganancia }}],
                 backgroundColor: [
                     'rgba(75, 192, 192, 0.2)',
                     'rgba(255, 99, 132, 0.2)',
@@ -135,106 +98,83 @@
             }]
         };
 
-        // Configuración del gráfico semanal
-        const configSemanal = {
+        // Configuración del gráfico de resumen
+        const configResumen = {
             type: 'bar',
-            data: dataSemanal,
+            data: dataResumen,
             options: {
                 scales: {
                     y: {
                         beginAtZero: true,
                         grid: {
-                            color: 'rgba(255, 255, 255, 0.1)' // Color de la cuadrícula del eje Y
+                            color: 'rgba(255, 255, 255, 0.1)'
                         },
                         ticks: {
-                            color: 'white' // Color del texto del eje Y
+                            color: 'white'
                         }
                     },
                     x: {
                         grid: {
-                            color: 'rgba(255, 255, 255, 0.1)' // Color de la cuadrícula del eje X
+                            color: 'rgba(255, 255, 255, 0.1)'
                         },
                         ticks: {
-                            color: 'white' // Color del texto del eje X
+                            color: 'white'
                         }
                     }
                 },
                 plugins: {
                     legend: {
                         labels: {
-                            color: 'white' // Color del texto de la leyenda
+                            color: 'white'
                         }
                     }
                 }
             }
         };
 
-        // Renderizar el gráfico semanal
-        const resumenSemanalChart = new Chart(
-            document.getElementById('resumenSemanalChart'),
-            configSemanal
+        // Renderizar el gráfico de resumen
+        const resumenChart = new Chart(
+            document.getElementById('resumenChart'),
+            configResumen
         );
 
-        // Datos para el gráfico diario
-        const dataDiario = {
-            labels: ['Ventas', 'Egresos', 'Costos', 'Ganancia Neta'],
+        // Datos para el gráfico de dona (distribución de ventas)
+        const dataDistribucion = {
+            labels: {{ distribucion_ventas | map(attribute='tipo') | list | tojson }},
             datasets: [{
-                label: 'Resumen Diario',
-                data: [{{ total_ventas_dia }}, {{ total_egresos_dia }}, {{ total_costo_dia }}, {{ ganancia_dia }}],
+                label: 'Distribución de Ventas',
+                data: {{ distribucion_ventas | map(attribute='total') | list | tojson }},
                 backgroundColor: [
                     'rgba(75, 192, 192, 0.2)',
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(255, 206, 86, 0.2)',
-                    'rgba(153, 102, 255, 0.2)'
+                    'rgba(255, 99, 132, 0.2)'
                 ],
                 borderColor: [
                     'rgba(75, 192, 192, 1)',
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(153, 102, 255, 1)'
+                    'rgba(255, 99, 132, 1)'
                 ],
                 borderWidth: 1
             }]
         };
 
-        // Configuración del gráfico diario
-        const configDiario = {
-            type: 'bar',
-            data: dataDiario,
+        // Configuración del gráfico de dona
+        const configDistribucion = {
+            type: 'doughnut',
+            data: dataDistribucion,
             options: {
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)' // Color de la cuadrícula del eje Y
-                        },
-                        ticks: {
-                            color: 'white' // Color del texto del eje Y
-                        }
-                    },
-                    x: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)' // Color de la cuadrícula del eje X
-                        },
-                        ticks: {
-                            color: 'white' // Color del texto del eje X
-                        }
-                    }
-                },
                 plugins: {
                     legend: {
                         labels: {
-                            color: 'white' // Color del texto de la leyenda
+                            color: 'white'
                         }
                     }
                 }
             }
         };
 
-        // Renderizar el gráfico diario
-        const resumenDiarioChart = new Chart(
-            document.getElementById('resumenDiarioChart'),
-            configDiario
+        // Renderizar el gráfico de dona
+        const distribucionVentasChart = new Chart(
+            document.getElementById('distribucionVentasChart'),
+            configDistribucion
         );
     </script>
 </div>
