@@ -97,6 +97,27 @@ def index():
         return redirect(url_for('inicio'))  # Redirige a la página principal del sistema
     return redirect(url_for('login'))  # Redirige al login si no está autenticado
 
+
+# Ruta para exportar la base de datos
+@app.route('/exportar_db')
+def exportar_db():
+    # Ruta al archivo de la base de datos
+    db_path = 'negocio.db'  # Ajusta esta ruta según la ubicación de tu base de datos
+
+    # Verificar si el archivo existe
+    if not os.path.exists(db_path):
+        return "La base de datos no existe.", 404
+
+    # Enviar el archivo como una descarga
+    return send_file(
+        db_path,
+        as_attachment=True,
+        download_name='negocio_export.db',  # Nombre del archivo descargado
+        mimetype='application/octet-stream'
+    )
+
+
+
 # Ruta para el login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
