@@ -81,12 +81,6 @@ def index():
     return redirect(url_for('login'))  # Redirige al login si no está autenticado
 
 
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> 5d50bdf (Subiendo el proyecto inicial)
 # Ruta para el login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
