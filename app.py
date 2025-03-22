@@ -1,17 +1,24 @@
-from flask import Flask, render_template, request, redirect, url_for, session,flash,jsonify
-import sqlite3
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+import psycopg2
 from datetime import datetime, timedelta
 import pytz
 import os
 from flask import send_file
-
+from psycopg2.extras import DictCursor
 
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta_aqui'  # Necesario para usar sesiones
-# Función para conectar a la base de datos
+
+# Configuración de la conexión a PostgreSQL
 def get_db_connection():
-    conn = sqlite3.connect('negocio.db')
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(
+        dbname="negocio_54gh",
+        user="negocio_54gh_user",
+        password="lwclY7Am6oVOImETtdFwjbSRvRFXO6yr",
+        host="dpg-cv8a1da3esus73ch8mrg-a.oregon-postgres.render.com",
+        port="5432"
+    )
+    conn.cursor_factory = DictCursor
     return conn
 
 # Crear tabla de usuarios si no existe
@@ -19,25 +26,8 @@ def crear_tabla_usuarios():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'user'
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-# Llamar a la función para crear la tabla de usuarios al iniciar la aplicación
-# Crear tabla de usuarios si no existe
-#prueba
-def crear_tabla_usuarios():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS usuarios_secret (
+            id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'user'
@@ -49,32 +39,13 @@ def crear_tabla_usuarios():
 # Llamar a la función para crear la tabla de usuarios al iniciar la aplicación
 crear_tabla_usuarios()
 
-
-
-# Proteger rutas que requieren autenticación
-def login_required(f):
-    def decorated_function(*args, **kwargs):
-        if 'username' not in session:
-            flash('Debes iniciar sesión para acceder a esta página.', 'error')
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-
-# Función para conectar a la base de datos
-def get_db_connection():
-    conn = sqlite3.connect('negocio.db')
-    conn.row_factory = sqlite3.Row
-    return conn
-
 # Función para crear la tabla `equipos` si no existe
 def crear_tabla_equipos():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS equipos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             tipo_reparacion TEXT NOT NULL,
             marca TEXT NOT NULL,
             modelo TEXT NOT NULL,
@@ -93,6 +64,15 @@ def crear_tabla_equipos():
 # Llamar a la función para crear la tabla al iniciar la aplicación
 crear_tabla_equipos()
 
+# Proteger rutas que requieren autenticación
+def login_required(f):
+    def decorated_function(*args, **kwargs):
+        if 'username' not in session:
+            flash('Debes iniciar sesión para acceder a esta página.', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 # Ruta principal (redirige al login si no está autenticado)
 @app.route('/')
 def index():
@@ -101,9 +81,12 @@ def index():
     return redirect(url_for('login'))  # Redirige al login si no está autenticado
 
 
+<<<<<<< HEAD
 
 
 
+=======
+>>>>>>> 5d50bdf (Subiendo el proyecto inicial)
 # Ruta para el login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -116,7 +99,7 @@ def login():
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM usuarios WHERE username = ?', (username,))
+        cursor.execute('SELECT * FROM usuarios_secret WHERE username = %s', (username,))
         user = cursor.fetchone()
         conn.close()
 
@@ -136,26 +119,6 @@ def inicio():
     if 'username' not in session:
         return redirect(url_for('login'))  # Redirige al login si no está autenticado
     return render_template('inicio.html')
-
-# Ruta para exportar la base de datos
-@app.route('/exportar_db')
-def exportar_db():
-    # Ruta al archivo de la base de datos
-    db_path = 'negocio.db'  # Ajusta esta ruta según la ubicación de tu base de datos
-
-    # Verificar si el archivo existe
-    if not os.path.exists(db_path):
-        return "La base de datos no existe.", 404
-
-    # Enviar el archivo como una descarga
-    return send_file(
-        db_path,
-        as_attachment=True,
-        download_name='negocio_export.db',  # Nombre del archivo descargado
-        mimetype='application/octet-stream'
-    )
-
-
 
 # Ruta para el logout
 @app.route('/logout')
@@ -180,9 +143,9 @@ def registrar_venta():
         if 'buscar' in request.form:
             busqueda = request.form['busqueda']
             cursor.execute('''
-                SELECT id, nombre, codigo_barras, stock, precio FROM productos
-                WHERE codigo_barras = ? OR nombre LIKE ?
-            ''', (busqueda, f'%{busqueda}%'))
+            SELECT id, nombre, codigo_barras, stock, precio FROM productos_secret
+            WHERE codigo_barras = %s OR nombre ILIKE %s
+        ''', (busqueda, f'%{busqueda}%'))
             productos = cursor.fetchall()
             conn.close()
             return render_template('registrar_venta.html', productos=productos, carrito=session['carrito'])
@@ -193,13 +156,13 @@ def registrar_venta():
             cantidad = int(request.form['cantidad'])
 
             # Obtener detalles del producto
-            cursor.execute('SELECT id, nombre, precio FROM productos WHERE id = ?', (producto_id,))
+            cursor.execute('SELECT id, nombre, precio FROM productos_secret WHERE id = %s', (producto_id,))
             producto = cursor.fetchone()
 
             if producto:
                 if producto['precio'] is not None:
                     # Verificar si hay suficiente stock
-                    cursor.execute('SELECT stock FROM productos WHERE id = ?', (producto_id,))
+                    cursor.execute('SELECT stock FROM productos_secret WHERE id = %s', (producto_id,))
                     stock = cursor.fetchone()['stock']
 
                     if stock >= cantidad:
@@ -240,7 +203,7 @@ def registrar_venta():
         # Registrar la venta (tanto normal como manual)
         elif 'registrar' in request.form:
             if not session['carrito']:
-                flash('El carrito está vacío. Agrega productos antes de registrar la venta', 'error')
+                flash('El carrito está vacío. Agrega productos_secret antes de registrar la venta', 'error')
                 return redirect(url_for('registrar_venta'))
 
             # Obtener el tipo de pago y el DNI del cliente
@@ -258,18 +221,18 @@ def registrar_venta():
 
                 if producto_id is not None:
                     # Verificar si hay suficiente stock (solo para productos en stock)
-                    cursor.execute('SELECT stock FROM productos WHERE id = ?', (producto_id,))
+                    cursor.execute('SELECT stock FROM productos_secret WHERE id = %s', (producto_id,))
                     producto = cursor.fetchone()
 
                     if producto and producto['stock'] >= cantidad:
                         # Registrar la venta en la tabla 'ventas'
                         cursor.execute('''
-                            INSERT INTO ventas (producto_id, cantidad, fecha, nombre_manual, precio_manual, tipo_pago, dni_cliente)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                            INSERT INTO ventas_secret (producto_id, cantidad, fecha, nombre_manual, precio_manual, tipo_pago, dni_cliente)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
                         ''', (producto_id, cantidad, fecha_actual, None, None, tipo_pago, dni_cliente))
 
                         # Actualizar el stock
-                        cursor.execute('UPDATE productos SET stock = stock - ? WHERE id = ?', (cantidad, producto_id))
+                        cursor.execute('UPDATE productos_secret SET stock = stock - %s WHERE id = %s', (cantidad, producto_id))
                     else:
                         conn.close()
                         flash(f'No hay suficiente stock para el producto: {nombre}', 'error')
@@ -277,8 +240,8 @@ def registrar_venta():
                 else:
                     # Registrar venta manual en la tabla 'reparaciones'
                     cursor.execute('''
-                        INSERT INTO reparaciones (nombre_servicio, precio, cantidad, tipo_pago, dni_cliente, fecha)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT INTO reparaciones_secret (nombre_servicio, precio, cantidad, tipo_pago, dni_cliente, fecha)
+                        VALUES (%s, %s, %s, %s, %s, %s)
                     ''', (nombre, precio, cantidad, tipo_pago, dni_cliente, fecha_actual))
 
             conn.commit()
@@ -310,14 +273,14 @@ def productos_mas_vendidos():
     # Consulta para obtener los 5 productos más vendidos
     cursor.execute('''
         SELECT nombre, precio, cantidad_vendida 
-        FROM productos 
+        FROM productos_secret 
         ORDER BY cantidad_vendida DESC 
         LIMIT 5
     ''')
     productos = cursor.fetchall()
 
     # Calcular el total de ventas
-    cursor.execute('SELECT SUM(cantidad_vendida) FROM productos')
+    cursor.execute('SELECT SUM(cantidad_vendida) FROM productos_secret')
     total_ventas = cursor.fetchone()[0]
 
     # Calcular el porcentaje de ventas para cada producto
@@ -338,8 +301,7 @@ def productos_mas_vendidos():
     # Renderizar la plantilla HTML con los productos y el total de ventas
     return render_template('productos_mas_vendidos.html', productos=productos_con_porcentaje, total_ventas=total_ventas)
 
-
-# Ruta para productos por agotarse---------------------------------------------
+# Ruta para productos por agotarse
 @app.route('/productos_por_agotarse')
 def productos_por_agotarse():
     conn = get_db_connection()
@@ -348,7 +310,7 @@ def productos_por_agotarse():
     # Obtener productos con stock menor o igual a 2
     cursor.execute('''
     SELECT id, nombre, codigo_barras, stock, precio, precio_costo
-    FROM productos
+    FROM productos_secret
     WHERE stock <= 2
     ORDER BY stock ASC
     ''')
@@ -356,9 +318,6 @@ def productos_por_agotarse():
 
     conn.close()
     return render_template('productos_por_agotarse.html', productos=productos)
-
-
-
 
 # Ruta principal para mostrar las ventas y reparaciones
 @app.route('/ultimas_ventas')
@@ -384,9 +343,9 @@ def ultimas_ventas():
             (v.cantidad * p.precio) AS total,
             v.fecha,
             v.tipo_pago
-        FROM ventas v
-        JOIN productos p ON v.producto_id = p.id
-        WHERE DATE(v.fecha) BETWEEN ? AND ?
+        FROM ventas_secret v
+        JOIN productos_secret p ON v.producto_id = p.id
+        WHERE DATE(v.fecha) BETWEEN %s AND %s
         ORDER BY v.fecha DESC
     ''', (fecha_desde, fecha_hasta))
     ventas = cursor.fetchall()
@@ -401,8 +360,8 @@ def ultimas_ventas():
             (cantidad * precio) AS total,
             fecha,
             tipo_pago
-        FROM reparaciones
-        WHERE DATE(fecha) BETWEEN ? AND ?
+        FROM reparaciones_secret
+        WHERE DATE(fecha) BETWEEN %s AND %s
         ORDER BY fecha DESC
     ''', (fecha_desde, fecha_hasta))
     reparaciones = cursor.fetchall()
@@ -441,8 +400,6 @@ def ultimas_ventas():
         fecha_hasta=fecha_hasta
     )
 
-
-
 # Ruta para eliminar una venta
 @app.route('/anular_venta/<int:venta_id>', methods=['POST'])
 def anular_venta(venta_id):
@@ -451,14 +408,14 @@ def anular_venta(venta_id):
 
     try:
         # Verificar si la venta existe
-        cursor.execute('SELECT * FROM ventas WHERE id = ?', (venta_id,))
+        cursor.execute('SELECT * FROM ventas_secret WHERE id = %s', (venta_id,))
         venta = cursor.fetchone()
 
         if not venta:
             return jsonify({'success': False, 'message': 'Venta no encontrada'}), 404
 
         # Eliminar la venta
-        cursor.execute('DELETE FROM ventas WHERE id = ?', (venta_id,))
+        cursor.execute('DELETE FROM ventas_secret WHERE id = %s', (venta_id,))
         conn.commit()
 
         return jsonify({'success': True, 'message': 'Venta eliminada correctamente'}), 200
@@ -476,14 +433,14 @@ def anular_reparacion(reparacion_id):
 
     try:
         # Verificar si la reparación existe
-        cursor.execute('SELECT * FROM reparaciones WHERE id = ?', (reparacion_id,))
+        cursor.execute('SELECT * FROM reparaciones_secret WHERE id = %s', (reparacion_id,))
         reparacion = cursor.fetchone()
 
         if not reparacion:
             return jsonify({'success': False, 'message': 'Reparación no encontrada'}), 404
 
         # Eliminar la reparación
-        cursor.execute('DELETE FROM reparaciones WHERE id = ?', (reparacion_id,))
+        cursor.execute('DELETE FROM reparaciones_secret WHERE id = %s', (reparacion_id,))
         conn.commit()
 
         return jsonify({'success': True, 'message': 'Reparación eliminada correctamente'}), 200
@@ -493,7 +450,7 @@ def anular_reparacion(reparacion_id):
     finally:
         conn.close()
 
-# Ruta para egresos----------------------------------------------------
+# Ruta para egresos
 @app.route('/egresos', methods=['GET', 'POST'])
 def egresos():
     conn = get_db_connection()
@@ -507,8 +464,8 @@ def egresos():
         tipo_pago = request.form['tipo_pago']  # Nuevo campo
 
         cursor.execute('''
-        INSERT INTO egresos (fecha, monto, descripcion, tipo_pago)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO egresos_secret (fecha, monto, descripcion, tipo_pago)
+        VALUES (%s, %s, %s, %s)
         ''', (fecha, monto, descripcion, tipo_pago))
         conn.commit()
         conn.close()
@@ -517,18 +474,18 @@ def egresos():
     # Eliminar un egreso
     if request.method == 'POST' and 'eliminar' in request.form:
         egreso_id = request.form['egreso_id']
-        cursor.execute('DELETE FROM egresos WHERE id = ?', (egreso_id,))
+        cursor.execute('DELETE FROM egresos_secret WHERE id = %s', (egreso_id,))
         conn.commit()
         conn.close()
         return redirect(url_for('egresos'))
 
     # Obtener todos los egresos
-    cursor.execute('SELECT id, fecha, monto, descripcion, tipo_pago FROM egresos ORDER BY fecha DESC')
+    cursor.execute('SELECT id, fecha, monto, descripcion, tipo_pago FROM egresos_secret ORDER BY fecha DESC')
     egresos = cursor.fetchall()
     conn.close()
     return render_template('egresos.html', egresos=egresos)
 
-# Ruta para el dashboard--------------------------------------------------
+# Ruta para el dashboard
 @app.route('/dashboard')
 def dashboard():
     conn = get_db_connection()
@@ -541,17 +498,17 @@ def dashboard():
     # Calcular el total de ventas de productos en el rango de fechas
     cursor.execute('''
     SELECT SUM(v.cantidad * COALESCE(p.precio, v.precio_manual)) AS total_ventas_productos
-    FROM ventas v
-    LEFT JOIN productos p ON v.producto_id = p.id
-    WHERE DATE(v.fecha) BETWEEN ? AND ?
+    FROM ventas_secret v
+    LEFT JOIN productos_secret p ON v.producto_id = p.id
+    WHERE DATE(v.fecha) BETWEEN %s AND %s
     ''', (fecha_desde, fecha_hasta))
     total_ventas_productos = cursor.fetchone()['total_ventas_productos'] or 0
 
     # Calcular el total de ventas de reparaciones en el rango de fechas
     cursor.execute('''
     SELECT SUM(precio) AS total_ventas_reparaciones
-    FROM reparaciones
-    WHERE DATE(fecha) BETWEEN ? AND ?
+    FROM reparaciones_secret
+    WHERE DATE(fecha) BETWEEN %s AND %s
     ''', (fecha_desde, fecha_hasta))
     total_ventas_reparaciones = cursor.fetchone()['total_ventas_reparaciones'] or 0
 
@@ -560,17 +517,17 @@ def dashboard():
     # Calcular el total de egresos en el rango de fechas
     cursor.execute('''
     SELECT SUM(monto) AS total_egresos
-    FROM egresos
-    WHERE DATE(fecha) BETWEEN ? AND ?
+    FROM egresos_secret
+    WHERE DATE(fecha) BETWEEN %s AND %s
     ''', (fecha_desde, fecha_hasta))
     total_egresos = cursor.fetchone()['total_egresos'] or 0
 
     # Calcular el costo de los productos vendidos en el rango de fechas
     cursor.execute('''
     SELECT SUM(v.cantidad * p.precio_costo) AS total_costo
-    FROM ventas v
-    JOIN productos p ON v.producto_id = p.id
-    WHERE DATE(v.fecha) BETWEEN ? AND ?
+    FROM ventas_secret v
+    JOIN productos_secret p ON v.producto_id = p.id
+    WHERE DATE(v.fecha) BETWEEN %s AND %s
     ''', (fecha_desde, fecha_hasta))
     total_costo = cursor.fetchone()['total_costo'] or 0
 
@@ -579,14 +536,14 @@ def dashboard():
 
     # Obtener la distribución de ventas por tipo (productos vs. reparaciones)
     cursor.execute('''
-    SELECT 'Productos' AS tipo, SUM(v.cantidad * COALESCE(p.precio, v.precio_manual)) AS total
-    FROM ventas v
-    LEFT JOIN productos p ON v.producto_id = p.id
-    WHERE DATE(v.fecha) BETWEEN ? AND ?
+    SELECT 'Productos_secret' AS tipo, SUM(v.cantidad * COALESCE(p.precio, v.precio_manual)) AS total
+    FROM ventas_secret v
+    LEFT JOIN productos_secret p ON v.producto_id = p.id
+    WHERE DATE(v.fecha) BETWEEN %s AND %s
     UNION ALL
-    SELECT 'Reparaciones' AS tipo, SUM(precio) AS total
-    FROM reparaciones
-    WHERE DATE(fecha) BETWEEN ? AND ?
+    SELECT 'Reparaciones_secret' AS tipo, SUM(precio) AS total
+    FROM reparaciones_secret
+    WHERE DATE(fecha) BETWEEN %s AND %s
     ''', (fecha_desde, fecha_hasta, fecha_desde, fecha_hasta))
     distribucion_ventas = cursor.fetchall()
 
@@ -602,7 +559,8 @@ def dashboard():
                           distribucion_ventas=distribucion_ventas,
                           fecha_desde=fecha_desde,
                           fecha_hasta=fecha_hasta)
-#prueba----------------------------------------------------
+
+# Ruta para resumen semanal
 @app.route('/resumen_semanal')
 def resumen_semanal():
     # Obtener la fecha de inicio de la semana (lunes)
@@ -617,8 +575,8 @@ def resumen_semanal():
     # Consultar las ventas de la semana actual
     cursor.execute('''
         SELECT tipo_pago, SUM(total) as total
-        FROM ventas
-        WHERE fecha >= ?
+        FROM ventas_secret
+        WHERE fecha >= %s
         GROUP BY tipo_pago
     ''', (inicio_semana_str,))
 
@@ -630,10 +588,7 @@ def resumen_semanal():
     # Renderizar la plantilla con el resumen
     return render_template('resumen_semanal.html', resumen=resumen)
 
-
-
-
-
+# Ruta para caja
 @app.route('/caja')
 def caja():
     conn = get_db_connection()
@@ -657,9 +612,9 @@ def caja():
             (v.cantidad * p.precio) AS total,
             v.fecha,
             v.tipo_pago
-        FROM ventas v
-        JOIN productos p ON v.producto_id = p.id
-        WHERE DATE(v.fecha) BETWEEN ? AND ?
+        FROM ventas_secret v
+        JOIN productos_secret p ON v.producto_id = p.id
+        WHERE DATE(v.fecha) BETWEEN %s AND %s
         ORDER BY v.fecha DESC
     ''', (fecha_desde, fecha_hasta))
     ventas = cursor.fetchall()
@@ -674,8 +629,8 @@ def caja():
             (cantidad * precio) AS total,
             fecha,
             tipo_pago
-        FROM reparaciones
-        WHERE DATE(fecha) BETWEEN ? AND ?
+        FROM reparaciones_secret
+        WHERE DATE(fecha) BETWEEN %s AND %s
         ORDER BY fecha DESC
     ''', (fecha_desde, fecha_hasta))
     reparaciones = cursor.fetchall()
@@ -688,8 +643,8 @@ def caja():
             monto,
             tipo_pago,
             fecha
-        FROM egresos
-        WHERE DATE(fecha) BETWEEN ? AND ?
+        FROM egresos_secret
+        WHERE DATE(fecha) BETWEEN %s AND %s
         ORDER BY fecha DESC
     ''', (fecha_desde, fecha_hasta))
     egresos = cursor.fetchall()
@@ -748,9 +703,8 @@ def caja():
         fecha_hasta=fecha_hasta,
         neto_por_pago=neto_por_pago
     )
-# Ruta para reparaciones----------------------------------
-from datetime import datetime, timedelta
 
+# Ruta para reparaciones
 @app.route('/reparaciones', methods=['GET', 'POST'])
 def reparaciones():
     conn = get_db_connection()
@@ -771,9 +725,9 @@ def reparaciones():
 
         # Insertar los datos en la base de datos
         cursor.execute('''
-            INSERT INTO equipos (
+            INSERT INTO equipos_secret (
                 tipo_reparacion, marca, modelo, tecnico, monto, nombre_cliente, telefono, nro_orden, fecha, hora
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (tipo_reparacion, marca, modelo, tecnico, monto, nombre_cliente, telefono, nro_orden, fecha, hora))
         conn.commit()
 
@@ -782,14 +736,14 @@ def reparaciones():
     fecha_hasta = request.args.get('fecha_hasta', datetime.now().strftime('%Y-%m-%d'))
 
     # Obtener los últimos equipos cargados en el rango de fechas seleccionado
-    cursor.execute("SELECT * FROM equipos WHERE fecha >= ? AND fecha <= ?", (fecha_desde, fecha_hasta))
+    cursor.execute("SELECT * FROM equipos_secret WHERE fecha >= %s AND fecha <= %s", (fecha_desde, fecha_hasta))
     ultimos_equipos = cursor.fetchall()
 
     # Obtener la cantidad de equipos por técnico en el rango de fechas seleccionado
     cursor.execute('''
         SELECT tecnico, COUNT(*) as cantidad
-        FROM equipos
-        WHERE fecha >= ? AND fecha <= ?
+        FROM equipos_secret
+        WHERE fecha >= %s AND fecha <= %s
         GROUP BY tecnico
     ''', (fecha_desde, fecha_hasta))
     datos_tecnicos = cursor.fetchall()
@@ -806,23 +760,22 @@ def reparaciones():
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta
     )
-# Ruta para eliminar reparaciones----------------------------------
+
+# Ruta para eliminar reparaciones
 @app.route('/eliminar_reparacion/<int:id>', methods=['POST'])
 def eliminar_reparacion(id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
     # Eliminar el equipo por su ID
-    cursor.execute('DELETE FROM equipos WHERE id = ?', (id,))
+    cursor.execute('DELETE FROM equipos_secret WHERE id = %s', (id,))
     conn.commit()
     conn.close()
 
     # Redirigir a la página de reparaciones después de eliminar
     return redirect(url_for('reparaciones'))
 
- 
-
-#ruta para actualizar estado de reparaciones
+# Ruta para actualizar estado de reparaciones
 @app.route('/actualizar_estado', methods=['POST'])
 def actualizar_estado():
     data = request.get_json()
@@ -833,15 +786,15 @@ def actualizar_estado():
     cursor = conn.cursor()
     cursor.execute('''
         UPDATE equipos
-        SET estado = ?
-        WHERE nro_orden = ?
+        SET estado = %s
+        WHERE nro_orden = %s
     ''', (estado, nro_orden))
     conn.commit()
     conn.close()
 
     return jsonify({'success': True})
 
-
+# Ruta para mercadería fallada
 @app.route('/mercaderia_fallada', methods=['GET', 'POST'])
 def mercaderia_fallada():
     conn = get_db_connection()
@@ -852,8 +805,8 @@ def mercaderia_fallada():
         busqueda = request.form['busqueda']
         cursor.execute('''
         SELECT id, nombre, codigo_barras, stock, precio, precio_costo
-        FROM productos
-        WHERE nombre LIKE ? OR codigo_barras LIKE ?
+        FROM productos_secret
+        WHERE nombre LIKE %s OR codigo_barras LIKE %s
         ''', (f'%{busqueda}%', f'%{busqueda}%'))
         productos = cursor.fetchall()
         conn.close()
@@ -867,18 +820,18 @@ def mercaderia_fallada():
         fecha = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         # Verificar si hay suficiente stock
-        cursor.execute('SELECT stock FROM productos WHERE id = ?', (producto_id,))
+        cursor.execute('SELECT stock FROM productos_secret WHERE id = %s', (producto_id,))
         producto = cursor.fetchone()
 
         if producto and producto['stock'] >= cantidad:
             # Registrar en la tabla `mercaderia_fallada`
             cursor.execute('''
-            INSERT INTO mercaderia_fallada (producto_id, cantidad, fecha, descripcion)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO mercaderia_fallada_secret (producto_id, cantidad, fecha, descripcion)
+            VALUES (%s, %s, %s, %s)
             ''', (producto_id, cantidad, fecha, descripcion))
 
             # Actualizar el stock en la tabla `productos`
-            cursor.execute('UPDATE productos SET stock = stock - ? WHERE id = ?', (cantidad, producto_id))
+            cursor.execute('UPDATE productos_secret SET stock = stock - %s WHERE id = %s', (cantidad, producto_id))
             conn.commit()
             conn.close()
             return redirect(url_for('mercaderia_fallada'))
@@ -889,8 +842,8 @@ def mercaderia_fallada():
     # Obtener historial de mercadería fallada
     cursor.execute('''
     SELECT mf.id, p.nombre, mf.cantidad, mf.fecha, mf.descripcion
-    FROM mercaderia_fallada mf
-    JOIN productos p ON mf.producto_id = p.id
+    FROM mercaderia_fallada_secret mf
+    JOIN productos_secret p ON mf.producto_id = p.id
     ORDER BY mf.fecha DESC
     ''')
     historial = cursor.fetchall()
@@ -898,12 +851,7 @@ def mercaderia_fallada():
     conn.close()
     return render_template('mercaderia_fallada.html', historial=historial)
 
-
-
-
-
-
-# Ruta para productos stock----------------------------------
+# Ruta para productos stock
 @app.route('/agregar_stock', methods=['GET', 'POST'])
 def agregar_stock():
     conn = get_db_connection()
@@ -916,7 +864,7 @@ def agregar_stock():
         # Eliminar un producto
         if request.method == 'POST' and 'eliminar' in request.form:
             producto_id = request.form['producto_id']
-            cursor.execute('DELETE FROM productos WHERE id = ?', (producto_id,))
+            cursor.execute('DELETE FROM productos_secret WHERE id = %s', (producto_id,))
             conn.commit()
             return redirect(url_for('agregar_stock'))
 
@@ -930,9 +878,9 @@ def agregar_stock():
             precio_costo = float(request.form['precio_costo'])
 
             cursor.execute('''
-            UPDATE productos
-            SET nombre = ?, codigo_barras = ?, stock = ?, precio = ?, precio_costo = ?
-            WHERE id = ?
+            UPDATE productos_secret
+            SET nombre = %s, codigo_barras = %s, stock = %s, precio = %s, precio_costo = %s
+            WHERE id = %s
             ''', (nombre, codigo_barras, stock, precio, precio_costo, producto_id))
             conn.commit()
             return redirect(url_for('agregar_stock'))
@@ -943,9 +891,9 @@ def agregar_stock():
             cantidad = int(request.form['cantidad'])
 
             cursor.execute('''
-            UPDATE productos
-            SET stock = stock + ?
-            WHERE id = ?
+            UPDATE productos_secret
+            SET stock = stock + %s
+            WHERE id = %s
             ''', (cantidad, producto_id))
             conn.commit()
             return redirect(url_for('agregar_stock'))
@@ -959,8 +907,8 @@ def agregar_stock():
             precio_costo = float(request.form['precio_costo'])
 
             cursor.execute('''
-            INSERT INTO productos (nombre, codigo_barras, stock, precio, precio_costo)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO productos_secret (nombre, codigo_barras, stock, precio, precio_costo)
+            VALUES (%s, %s, %s, %s, %s)
             ''', (nombre, codigo_barras, stock, precio, precio_costo))
             conn.commit()
             return redirect(url_for('agregar_stock'))
@@ -970,12 +918,12 @@ def agregar_stock():
             if busqueda:
                 cursor.execute('''
                 SELECT id, nombre, codigo_barras, stock, precio, precio_costo
-                FROM productos
-                WHERE nombre LIKE ? OR codigo_barras LIKE ?
+                FROM productos_secret
+                WHERE nombre LIKE %s OR codigo_barras LIKE %s
                 ''', (f'%{busqueda}%', f'%{busqueda}%'))
             else:
                 # Si no hay búsqueda, obtener todos los productos
-                cursor.execute('SELECT id, nombre, codigo_barras, stock, precio, precio_costo FROM productos')
+                cursor.execute('SELECT id, nombre, codigo_barras, stock, precio, precio_costo FROM productos_secret')
 
             productos = cursor.fetchall()
         except Exception as e:
@@ -993,6 +941,6 @@ def agregar_stock():
         conn.close()
 
     return render_template('agregar_stock.html', productos=productos, busqueda=busqueda)
+
 if __name__ == '__main__':
-    app.run(debug=True)
     app.run(debug=True)
