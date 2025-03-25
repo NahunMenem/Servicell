@@ -24,7 +24,9 @@
                 <form method="POST">
                     <div class="mb-4">
                         <label for="busqueda" class="block text-gray-300 mb-2">Código de Barras o Nombre:</label>
-                        <input type="text" id="busqueda" name="busqueda" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500" required>
+                        <input type="text" id="busqueda" name="busqueda" 
+                               class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500" 
+                               required autofocus>
                     </div>
                     <button type="submit" name="buscar" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Buscar</button>
                 </form>
@@ -144,4 +146,18 @@
         <a href="{{ url_for('index') }}" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Volver al Inicio</a>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const busquedaInput = document.getElementById('busqueda');
+        if (busquedaInput) {
+            busquedaInput.focus();
+            
+            // Opcional: Seleccionar todo el texto al enfocar
+            busquedaInput.addEventListener('focus', function() {
+                this.select();
+            });
+        }
+    });
+</script>
 {% endblock %}
