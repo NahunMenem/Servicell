@@ -123,6 +123,7 @@ def logout():
     return redirect(url_for('login'))
 
 # Ruta para registrar ventas
+# Ruta para registrar ventas
 @app.route('/registrar_venta', methods=['GET', 'POST'])
 def registrar_venta():
     conn = get_db_connection()
@@ -139,7 +140,7 @@ def registrar_venta():
             cursor.execute('''
             SELECT id, nombre, codigo_barras, stock, precio FROM productos
             WHERE codigo_barras = %s OR nombre ILIKE %s
-        ''', (busqueda, f'%{busqueda}%'))
+            ''', (busqueda, f'%{busqueda}%'))
             productos = cursor.fetchall()
             conn.close()
             return render_template('registrar_venta.html', productos=productos, carrito=session['carrito'])
@@ -164,12 +165,11 @@ def registrar_venta():
                         item = {
                             'id': producto['id'],
                             'nombre': producto['nombre'],
-                            'precio': producto['precio'],
-                            'cantidad': cantidad
+                            'precio': float(producto['precio']),
+                            'cantidad': int(cantidad)
                         }
                         session['carrito'].append(item)
                         session.modified = True
-            
                     else:
                         flash(f'No hay suficiente stock para "{producto["nombre"]}"', 'error')
                 else:
@@ -185,7 +185,7 @@ def registrar_venta():
 
             # Agregar venta manual al carrito
             item = {
-                'id': None,  # No tiene ID porque no está en el stock
+                'id': None,
                 'nombre': nombre,
                 'precio': precio,
                 'cantidad': cantidad
@@ -210,11 +210,11 @@ def registrar_venta():
             for item in session['carrito']:
                 producto_id = item['id']
                 nombre = item['nombre']
-                precio = item['precio']
-                cantidad = item['cantidad']
+                precio = float(item['precio'])
+                cantidad = int(item['cantidad'])
 
                 if producto_id is not None:
-                    # Verificar si hay suficiente stock (solo para productos en stock)
+                    # Verificar si hay suficiente stock
                     cursor.execute('SELECT stock FROM productos WHERE id = %s', (producto_id,))
                     producto = cursor.fetchone()
 
@@ -240,7 +240,7 @@ def registrar_venta():
 
             conn.commit()
             conn.close()
-            session.pop('carrito', None)  # Vaciar el carrito después de registrar la venta
+            session.pop('carrito', None)
             flash('Venta registrada con éxito', 'success')
             return redirect(url_for('registrar_venta'))
 
@@ -250,12 +250,12 @@ def registrar_venta():
             flash('Carrito vaciado con éxito', 'success')
             return redirect(url_for('registrar_venta'))
 
-    # Calcular el total del carrito
-    total = sum(item['precio'] * item['cantidad'] for item in session['carrito'])
+    # Calcular el total del carrito asegurando que los valores sean numéricos
+    total = sum(float(item['precio']) * int(item['cantidad']) for item in session['carrito'])
 
-    # Si es GET, mostrar el formulario de búsqueda
     conn.close()
     return render_template('registrar_venta.html', productos=None, carrito=session['carrito'], total=total)
+
 
 # Ruta para mostrar los productos más vendidos
 @app.route('/productos_mas_vendidos')
