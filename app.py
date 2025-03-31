@@ -890,6 +890,10 @@ def mercaderia_fallada():
     conn.close()
     return render_template('mercaderia_fallada.html', historial=historial)
 
+
+
+
+
 @app.route('/agregar_stock', methods=['GET', 'POST'])
 def agregar_stock():
     conn = get_db_connection()
