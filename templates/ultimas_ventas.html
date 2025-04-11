@@ -2,9 +2,11 @@
 
 {% block content %}
 <div class="p-6 bg-gray-900 text-white min-h-screen">
-    <h1 class="text-3xl font-bold text-center mb-8">Transacciones del Día ({{ fecha_actual }})</h1>
+    <h1 class="text-3xl font-bold text-center mb-8 flex items-center justify-center gap-2">
+        <i data-lucide="file-bar-chart"></i>
+        Transacciones del Día ({{ fecha_actual }})
+    </h1>
 
-    <!-- Formulario de Filtrado por Fecha -->
     {% if session.get('role') == 'admin' %}
     <div class="mb-8">
         <h2 class="text-2xl font-semibold mb-4">Filtrar por Fecha</h2>
@@ -19,14 +21,15 @@
                     <input type="date" id="fecha_hasta" name="fecha_hasta" value="{{ fecha_hasta }}" class="w-full p-2 rounded bg-gray-700 text-white">
                 </div>
                 <div class="flex items-end">
-                    <button type="submit" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Filtrar</button>
+                    <button type="submit" class="inline-flex items-center justify-center w-full gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition duration-300">
+                        <i data-lucide="filter"></i>
+                        Filtrar
+                    </button>
                 </div>
                 <div class="flex items-end">
                     <a href="{{ url_for('ultimas_ventas', fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, exportar=True) }}" 
-                       class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition duration-300 text-center flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
+                       class="inline-flex items-center justify-center w-full gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition duration-300">
+                        <i data-lucide="file-down"></i>
                         Exportar Excel
                     </a>
                 </div>
@@ -35,11 +38,9 @@
     </div>
     {% endif %}
 
-    <!-- Sección de Totales por Tipo de Pago -->
     <div class="mb-8">
         <h2 class="text-2xl font-semibold mb-4">Totales por Tipo de Pago</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Totales de Ventas -->
             <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
                 <h3 class="text-xl font-semibold mb-4">Ventas</h3>
                 <ul>
@@ -52,8 +53,6 @@
                     {% endfor %}
                 </ul>
             </div>
-
-            <!-- Totales de Reparaciones -->
             <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
                 <h3 class="text-xl font-semibold mb-4">Reparaciones</h3>
                 <ul>
@@ -69,7 +68,6 @@
         </div>
     </div>
 
-    <!-- Sección de Ventas -->
     <div class="mb-8">
         <h2 class="text-2xl font-semibold mb-4">Ventas</h2>
         <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
@@ -99,8 +97,8 @@
                             <td class="px-4 py-2">{{ venta.dni_cliente or '' }}</td>
                             <td class="px-4 py-2">
                                 {% if session.get('role') == 'admin' %}
-                                <button onclick="anularVenta({{ venta.venta_id }})" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-300">
-                                    Anular
+                                <button onclick="anularVenta({{ venta.venta_id }})" class="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition duration-300">
+                                    <i data-lucide="x"></i> Anular
                                 </button>
                                 {% endif %}
                             </td>
@@ -116,7 +114,6 @@
         </div>
     </div>
 
-    <!-- Sección de Reparaciones -->
     <div>
         <h2 class="text-2xl font-semibold mb-4">Reparaciones</h2>
         <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
@@ -144,8 +141,8 @@
                             <td class="px-4 py-2">{{ reparacion.tipo_pago }}</td>
                             <td class="px-4 py-2">
                                 {% if session.get('role') == 'admin' %}
-                                <button onclick="anularReparacion({{ reparacion.reparacion_id }})" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-300">
-                                    Anular
+                                <button onclick="anularReparacion({{ reparacion.reparacion_id }})" class="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition duration-300">
+                                    <i data-lucide="x"></i> Anular
                                 </button>
                                 {% endif %}
                             </td>
@@ -161,13 +158,13 @@
         </div>
     </div>
 
-    <!-- Botón para volver al inicio -->
     <div class="mt-8 text-center">
-        <a href="{{ url_for('index') }}" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Volver al Inicio</a>
+        <a href="{{ url_for('index') }}" class="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition duration-300">
+            <i data-lucide="arrow-left"></i> Volver al Inicio
+        </a>
     </div>
 </div>
 
-<!-- Script para anular ventas y reparaciones -->
 <script>
     function anularVenta(venta_id) {
         if (confirm('¿Estás seguro de que deseas anular esta venta?')) {
