@@ -2,42 +2,45 @@
 
 {% block content %}
 <div class="p-6 bg-gray-900 text-white min-h-screen">
-    <h1 class="text-3xl font-bold text-center mb-8">Gestión de Egresos</h1>
+    <h1 class="text-3xl font-bold text-center mb-8 flex items-center justify-center gap-2">
+        <i data-lucide="credit-card"></i>
+        Gestión de Egresos
+    </h1>
 
-    <!-- Formulario para agregar un nuevo egreso -->
     <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
         <h2 class="text-2xl font-semibold mb-4">Agregar Egreso</h2>
         <form method="POST">
             <div class="mb-4">
                 <label for="fecha" class="block text-gray-300 mb-2">Fecha:</label>
-                <input type="date" id="fecha" name="fecha" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500" required>
+                <input type="date" id="fecha" name="fecha" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500" required>
             </div>
             <div class="mb-4">
                 <label for="monto" class="block text-gray-300 mb-2">Monto:</label>
-                <input type="number" step="0.01" id="monto" name="monto" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500" required>
+                <input type="number" step="0.01" id="monto" name="monto" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500" required>
             </div>
             <div class="mb-4">
                 <label for="descripcion" class="block text-gray-300 mb-2">Descripción:</label>
-                <input type="text" id="descripcion" name="descripcion" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500" required>
+                <input type="text" id="descripcion" name="descripcion" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500" required>
             </div>
             <div class="mb-4">
                 <label class="block text-gray-300 mb-2">Tipo de Pago:</label>
                 <div class="flex space-x-4">
                     <label class="flex items-center">
-                        <input type="radio" name="tipo_pago" value="Efectivo" class="form-radio h-4 w-4 text-blue-600" required>
+                        <input type="radio" name="tipo_pago" value="Efectivo" class="form-radio h-4 w-4 text-indigo-500" required>
                         <span class="ml-2 text-gray-300">Efectivo</span>
                     </label>
                     <label class="flex items-center">
-                        <input type="radio" name="tipo_pago" value="Transferencia" class="form-radio h-4 w-4 text-blue-600">
+                        <input type="radio" name="tipo_pago" value="Transferencia" class="form-radio h-4 w-4 text-indigo-500">
                         <span class="ml-2 text-gray-300">Transferencia</span>
                     </label>
                 </div>
             </div>
-            <button type="submit" name="agregar" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Agregar Egreso</button>
+            <button type="submit" name="agregar" class="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition duration-300">
+                <i data-lucide="plus-circle"></i> Agregar Egreso
+            </button>
         </form>
     </div>
 
-    <!-- Tabla de egresos existentes -->
     <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
         <h2 class="text-2xl font-semibold mb-4">Lista de Egresos</h2>
         <div class="overflow-x-auto">
@@ -63,7 +66,9 @@
                         <td class="px-4 py-2">
                             <form method="POST" class="inline">
                                 <input type="hidden" name="egreso_id" value="{{ egreso.id }}">
-                                <button type="submit" name="eliminar" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-300">Eliminar</button>
+                                <button type="submit" name="eliminar" class="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-lg transition duration-300">
+                                    <i data-lucide="trash-2"></i> Eliminar
+                                </button>
                             </form>
                         </td>
                     </tr>
@@ -73,9 +78,10 @@
         </div>
     </div>
 
-    <!-- Botón para volver al inicio -->
     <div class="mt-8 text-center">
-        <a href="{{ url_for('index') }}" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Volver al Inicio</a>
+        <a href="{{ url_for('index') }}" class="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition duration-300">
+            <i data-lucide="arrow-left"></i> Volver al Inicio
+        </a>
     </div>
 </div>
 {% endblock %}
