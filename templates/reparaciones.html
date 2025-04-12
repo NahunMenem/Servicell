@@ -140,9 +140,43 @@
         </div>
 
         <!-- Últimos Teléfonos Cargados -->
-        <div class="bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        <div class="bg-gray-800 shadow-md rounded px-4 md:px-8 pt-6 pb-8 mb-4">
             <h2 class="text-xl font-bold text-center mb-6 text-white">Últimos Teléfonos Cargados</h2>
-            <div class="overflow-x-auto">
+        
+            <!-- Vista tipo tarjeta para móviles -->
+            <div class="md:hidden space-y-4">
+                {% for equipo in ultimos_equipos %}
+                    <div class="bg-gray-700 p-4 rounded-lg shadow">
+                        <p><strong>Tipo Reparación:</strong> {{ equipo.tipo_reparacion }}</p>
+                        <p><strong>Marca:</strong> {{ equipo.marca }}</p>
+                        <p><strong>Modelo:</strong> {{ equipo.modelo }}</p>
+                        <p><strong>Técnico:</strong> {{ equipo.tecnico }}</p>
+                        <p><strong>Monto:</strong> {{ equipo.monto }}</p>
+                        <p><strong>Cliente:</strong> {{ equipo.nombre_cliente }}</p>
+                        <p><strong>Teléfono:</strong> {{ equipo.telefono }}</p>
+                        <p><strong>N° Orden:</strong> {{ equipo.nro_orden }}</p>
+                        <p><strong>Fecha:</strong> {{ equipo.fecha }}</p>
+                        <div class="mb-2">
+                            <label class="block text-sm font-semibold mb-1">Estado:</label>
+                            <select class="estado-reparacion w-full bg-gray-800 text-white p-2 rounded" data-telefono="{{ equipo.telefono }}" data-nro-orden="{{ equipo.nro_orden }}">
+                                <option value="por_reparar" {% if equipo.estado == 'por_reparar' %}selected{% endif %}>Por reparar</option>
+                                <option value="en_reparacion" {% if equipo.estado == 'en_reparacion' %}selected{% endif %}>En reparación</option>
+                                <option value="listo" {% if equipo.estado == 'listo' %}selected{% endif %}>Listo</option>
+                                <option value="Retirado" {% if equipo.estado == 'Retirado' %}selected{% endif %}>Retirado</option>
+                                <option value="No salio" {% if equipo.estado == 'No salio' %}selected{% endif %}>No salió</option>
+                            </select>
+                        </div>
+                        <form action="{{ url_for('eliminar_reparacion', id=equipo.id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este equipo?');">
+                            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded mt-2">
+                                Eliminar
+                            </button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        
+            <!-- Tabla visible en pantallas medianas o grandes -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="min-w-full bg-gray-700 text-gray-300">
                     <thead>
                         <tr>
@@ -177,13 +211,12 @@
                                         <option value="en_reparacion" {% if equipo.estado == 'en_reparacion' %}selected{% endif %}>En reparación</option>
                                         <option value="listo" {% if equipo.estado == 'listo' %}selected{% endif %}>Listo</option>
                                         <option value="Retirado" {% if equipo.estado == 'Retirado' %}selected{% endif %}>Retirado</option>
-                                        <option value="No salio" {% if equipo.estado == 'No salio' %}selected{% endif %}>No salio</option>
+                                        <option value="No salio" {% if equipo.estado == 'No salio' %}selected{% endif %}>No salió</option>
                                     </select>
                                 </td>
                                 <td class="border px-4 py-2">
-                                    <!-- Formulario para eliminar -->
                                     <form action="{{ url_for('eliminar_reparacion', id=equipo.id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este equipo?');">
-                                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded focus:outline-none focus:shadow-outline">
+                                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded">
                                             Eliminar
                                         </button>
                                     </form>
@@ -194,6 +227,7 @@
                 </table>
             </div>
         </div>
+        
     </div>
 
     <!-- Script para manejar el cambio de estado y enviar WhatsApp -->
@@ -235,3 +269,4 @@
         });
     </script>
 {% endblock %}
+
