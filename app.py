@@ -744,13 +744,17 @@ def caja():
     )
 
 # Ruta para reparaciones
+import unicodedata
+
+def normalizar(texto):
+    return unicodedata.normalize('NFKD', texto).encode('ASCII', 'ignore').decode().lower().strip()
+
 @app.route('/reparaciones', methods=['GET', 'POST'])
 def reparaciones():
     conn = get_db_connection()
     cursor = conn.cursor()
 
     if request.method == 'POST':
-        # Obtener los datos del formulario
         tipo_reparacion = request.form['tipo_reparacion']
         marca = request.form['equipo']
         modelo = request.form['modelo']
@@ -759,46 +763,97 @@ def reparaciones():
         nombre_cliente = request.form['nombre_cliente']
         telefono = request.form['telefono']
         nro_orden = request.form['nro_orden']
-        fecha = datetime.now().strftime('%Y-%m-%d')
+        fecha = datetime.now().date()
         hora = datetime.now().strftime('%H:%M:%S')
+        estado = 'Por Reparar'
 
-        # Insertar los datos en la base de datos
         cursor.execute('''
             INSERT INTO equipos (
-                tipo_reparacion, marca, modelo, tecnico, monto, nombre_cliente, telefono, nro_orden, fecha, hora
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ''', (tipo_reparacion, marca, modelo, tecnico, monto, nombre_cliente, telefono, nro_orden, fecha, hora))
+                tipo_reparacion, marca, modelo, tecnico, monto,
+                nombre_cliente, telefono, nro_orden, fecha, hora, estado
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (
+            tipo_reparacion, marca, modelo, tecnico, monto,
+            nombre_cliente, telefono, nro_orden, fecha, hora, estado
+        ))
         conn.commit()
 
-    # Obtener las fechas de filtro desde la URL
+    # Fechas desde GET
     fecha_desde = request.args.get('fecha_desde', (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d'))
     fecha_hasta = request.args.get('fecha_hasta', datetime.now().strftime('%Y-%m-%d'))
 
-    # Obtener los últimos equipos cargados en el rango de fechas seleccionado
-    cursor.execute("SELECT * FROM equipos WHERE fecha >= %s AND fecha <= %s ORDER BY nro_orden DESC", (fecha_desde, fecha_hasta))
+    # Últimos equipos
+    cursor.execute('''
+        SELECT * FROM equipos
+        WHERE fecha BETWEEN %s AND %s
+        ORDER BY nro_orden DESC
+    ''', (fecha_desde, fecha_hasta))
     ultimos_equipos = cursor.fetchall()
 
-    # Obtener la cantidad de equipos por técnico en el rango de fechas seleccionado
+    # Por técnico
     cursor.execute('''
         SELECT tecnico, COUNT(*) as cantidad
         FROM equipos
-        WHERE fecha >= %s AND fecha <= %s
+        WHERE fecha BETWEEN %s AND %s
         GROUP BY tecnico
     ''', (fecha_desde, fecha_hasta))
     datos_tecnicos = cursor.fetchall()
+    equipos_por_tecnico = {row['tecnico']: row['cantidad'] for row in datos_tecnicos}
+
+    # Por estado
+    cursor.execute('''
+        SELECT estado, COUNT(*) as cantidad
+        FROM equipos
+        WHERE fecha BETWEEN %s AND %s
+        GROUP BY estado
+    ''', (fecha_desde, fecha_hasta))
+    datos_estados = cursor.fetchall()
+
+    # Inicializar resumen
+    estados = {
+        'por_reparar': 0,
+        'en_reparacion': 0,
+        'listo': 0,
+        'retirado': 0,
+        'no_salio': 0
+    }
+
+    for row in datos_estados:
+        estado = normalizar(row['estado'])
+        cantidad = row['cantidad']
+
+        if estado in ['por reparar', 'por_reparar']:
+            estados['por_reparar'] += cantidad
+        elif estado in ['en reparacion', 'en reparación', 'en_reparacion']:
+            estados['en_reparacion'] += cantidad
+        elif estado == 'listo':
+            estados['listo'] += cantidad
+        elif estado == 'retirado':
+            estados['retirado'] += cantidad
+        elif estado in ['no salio', 'no_salio']:
+            estados['no_salio'] += cantidad
+        else:
+            # Por si aparece un nuevo estado no previsto
+            estados[estado] = cantidad
+
+    # Total sumando todos menos la clave 'total'
+    estados['total'] = sum([
+        cantidad for key, cantidad in estados.items()
+        if key != 'total'
+    ])
 
     conn.close()
-
-    # Preparar los datos para la vista
-    equipos_por_tecnico = {row['tecnico']: row['cantidad'] for row in datos_tecnicos}
 
     return render_template(
         'reparaciones.html',
         ultimos_equipos=ultimos_equipos,
         equipos_por_tecnico=equipos_por_tecnico,
         fecha_desde=fecha_desde,
-        fecha_hasta=fecha_hasta
+        fecha_hasta=fecha_hasta,
+        estados=estados
     )
+
+
 
 # Ruta para eliminar reparaciones
 @app.route('/eliminar_reparacion/<int:id>', methods=['POST'])
