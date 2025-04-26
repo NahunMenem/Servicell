@@ -71,6 +71,10 @@
           <a href="{{ url_for('reparaciones') }}" class="flex items-center p-2 rounded hover:bg-gray-700 {{ 'bg-gray-700' if request.endpoint == 'reparaciones' else '' }}">
             <i data-lucide="wrench" class="w-5 h-5 mr-2"></i> Reparaciones
           </a>
+          <a href="{{ url_for('simulador_tarjeta') }}" class="flex items-center p-2 rounded hover:bg-gray-700 {{ 'bg-gray-700' if request.endpoint == 'simulador_tarjeta' else '' }}">
+            <i data-lucide="credit-card" class="w-5 h-5 mr-2"></i> Simulador Tarjeta
+          </a>
+          
           <a href="{{ url_for('mercaderia_fallada') }}" class="flex items-center p-2 rounded hover:bg-gray-700 {{ 'bg-gray-700' if request.endpoint == 'mercaderia_fallada' else '' }}">
             <i data-lucide="x-circle" class="w-5 h-5 mr-2"></i> Mercadería Fallada
           </a>
