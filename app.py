@@ -21,7 +21,7 @@ def get_db_connection():
     conn.cursor_factory = DictCursor
     return conn
 
-# Crear tabla de usuarios si no existe
+# Crear tabla de usuarios si no existe eeee
 def crear_tabla_usuarios():
     conn = get_db_connection()
     cursor = conn.cursor()
