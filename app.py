@@ -256,6 +256,10 @@ def registrar_venta():
     conn.close()
     return render_template('registrar_venta.html', productos=None, carrito=session['carrito'], total=total)
 
+@app.route("/simulador_tarjeta")
+def simulador_tarjeta():
+    return render_template("simulador_tarjeta.html")
+
 
 # Ruta para mostrar los productos más vendidos
 @app.route('/productos_mas_vendidos')
