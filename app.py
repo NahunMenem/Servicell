@@ -256,9 +256,13 @@ def registrar_venta():
     conn.close()
     return render_template('registrar_venta.html', productos=None, carrito=session['carrito'], total=total)
 
-@app.route("/simulador_tarjeta")
-def simulador_tarjeta():
-    return render_template("simulador_tarjeta.html")
+
+
+
+
+@app.route("/cotizar")
+def cotizar():
+    return render_template("cotizar.html")
 
 
 # Ruta para mostrar los productos más vendidos
@@ -1045,3 +1049,4 @@ def agregar_stock():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
