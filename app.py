@@ -195,14 +195,33 @@ def registrar_venta():
             flash(f'Servicio técnico "{nombre}" agregado al carrito', 'success')
 
         # Registrar la venta (tanto normal como manual)
+                # Registrar la venta (tanto normal como manual)
         elif 'registrar' in request.form:
             if not session['carrito']:
                 flash('El carrito está vacío. Agrega productos antes de registrar la venta', 'error')
                 return redirect(url_for('registrar_venta'))
 
-            # Obtener el tipo de pago y el DNI del cliente
-            tipo_pago = request.form['tipo_pago']
-            dni_cliente = request.form['dni_cliente']
+            # Obtener los tipos de pago y montos
+            tipo_pago_1 = request.form.get('tipo_pago_1')
+
+            monto_pago_1_raw = request.form.get('monto_pago_1', '0')
+            monto_pago_1 = float(monto_pago_1_raw) if monto_pago_1_raw else 0.0
+
+            tipo_pago_2 = request.form.get('tipo_pago_2')
+
+            monto_pago_2_raw = request.form.get('monto_pago_2', '0')
+            monto_pago_2 = float(monto_pago_2_raw) if monto_pago_2_raw else 0.0
+
+
+            # Calcular el total del carrito
+            total_carrito = sum(float(item['precio']) * int(item['cantidad']) for item in session['carrito'])
+
+            # Validar que los montos sumen igual que el total
+            if round(monto_pago_1 + monto_pago_2, 2) != round(total_carrito, 2):
+                flash(f'La suma de los montos no coincide con el total del carrito (${total_carrito:.2f}).', 'error')
+                return redirect(url_for('registrar_venta'))
+
+            dni_cliente = request.form.get('dni_cliente')
             argentina_tz = pytz.timezone('America/Argentina/Buenos_Aires')
             fecha_actual = datetime.now(argentina_tz).strftime('%Y-%m-%d %H:%M:%S')
 
@@ -219,11 +238,19 @@ def registrar_venta():
                     producto = cursor.fetchone()
 
                     if producto and producto['stock'] >= cantidad:
-                        # Registrar la venta en la tabla 'ventas'
-                        cursor.execute('''
-                            INSERT INTO ventas (producto_id, cantidad, fecha, nombre_manual, precio_manual, tipo_pago, dni_cliente)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        ''', (producto_id, cantidad, fecha_actual, None, None, tipo_pago, dni_cliente))
+                        # Registrar la venta para el primer método de pago
+                        if monto_pago_1 > 0 and tipo_pago_1:
+                            cursor.execute('''
+                                INSERT INTO ventas (producto_id, cantidad, fecha, nombre_manual, precio_manual, tipo_pago, dni_cliente)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            ''', (producto_id, cantidad, fecha_actual, None, None, tipo_pago_1, dni_cliente))
+
+                        # Registrar la venta para el segundo método de pago (si existe)
+                        if monto_pago_2 > 0 and tipo_pago_2:
+                            cursor.execute('''
+                                INSERT INTO ventas (producto_id, cantidad, fecha, nombre_manual, precio_manual, tipo_pago, dni_cliente)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            ''', (producto_id, cantidad, fecha_actual, None, None, tipo_pago_2, dni_cliente))
 
                         # Actualizar el stock
                         cursor.execute('UPDATE productos SET stock = stock - %s WHERE id = %s', (cantidad, producto_id))
@@ -232,17 +259,25 @@ def registrar_venta():
                         flash(f'No hay suficiente stock para el producto: {nombre}', 'error')
                         return redirect(url_for('registrar_venta'))
                 else:
-                    # Registrar venta manual en la tabla 'reparaciones'
-                    cursor.execute('''
-                        INSERT INTO reparaciones (nombre_servicio, precio, cantidad, tipo_pago, dni_cliente, fecha)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                    ''', (nombre, precio, cantidad, tipo_pago, dni_cliente, fecha_actual))
+                    # Servicios técnicos manuales
+                    if monto_pago_1 > 0 and tipo_pago_1:
+                        cursor.execute('''
+                            INSERT INTO reparaciones (nombre_servicio, precio, cantidad, tipo_pago, dni_cliente, fecha)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                        ''', (nombre, precio, cantidad, tipo_pago_1, dni_cliente, fecha_actual))
+
+                    if monto_pago_2 > 0 and tipo_pago_2:
+                        cursor.execute('''
+                            INSERT INTO reparaciones (nombre_servicio, precio, cantidad, tipo_pago, dni_cliente, fecha)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                        ''', (nombre, precio, cantidad, tipo_pago_2, dni_cliente, fecha_actual))
 
             conn.commit()
             conn.close()
             session.pop('carrito', None)
             flash('Venta registrada con éxito', 'success')
             return redirect(url_for('registrar_venta'))
+
 
         # Vaciar el carrito
         elif 'vaciar' in request.form:
@@ -1049,4 +1084,5 @@ def agregar_stock():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
