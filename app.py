@@ -612,6 +612,45 @@ def dashboard():
     WHERE DATE(v.fecha) BETWEEN %s AND %s
     ''', (fecha_desde, fecha_hasta))
     total_costo = cursor.fetchone()['total_costo'] or 0
+    
+    cursor.execute('SELECT SUM(stock * precio_costo) AS total_costo_stock FROM productos')
+    total_costo_stock = cursor.fetchone()['total_costo_stock'] or 0
+
+    cursor.execute('SELECT SUM(stock * precio) AS total_venta_stock FROM productos')
+    total_venta_stock = cursor.fetchone()['total_venta_stock'] or 0
+
+    cursor.execute('SELECT SUM(stock) AS cantidad_total_stock FROM productos')
+    cantidad_total_stock = cursor.fetchone()['cantidad_total_stock'] or 0
+        # Ventas mensuales (productos)
+    cursor.execute('''
+        SELECT TO_CHAR(v.fecha, 'YYYY-MM') AS mes, SUM(v.cantidad * COALESCE(p.precio, v.precio_manual)) AS total
+        FROM ventas v
+        LEFT JOIN productos p ON v.producto_id = p.id
+        GROUP BY mes
+        ORDER BY mes
+    ''')
+    ventas_productos = cursor.fetchall()
+
+    # Reparaciones mensuales
+    cursor.execute('''
+        SELECT TO_CHAR(fecha, 'YYYY-MM') AS mes, SUM(cantidad * precio) AS total
+        FROM reparaciones
+        GROUP BY mes
+        ORDER BY mes
+    ''')
+    ventas_reparaciones = cursor.fetchall()
+
+    # Combinar ambas
+    ventas_dict = {}
+    for row in ventas_productos:
+        ventas_dict[row['mes']] = ventas_dict.get(row['mes'], 0) + row['total']
+    for row in ventas_reparaciones:
+        ventas_dict[row['mes']] = ventas_dict.get(row['mes'], 0) + row['total']
+
+    # Lista ordenada
+    ventas_mensuales = [{'mes': mes, 'total': round(ventas_dict[mes], 2)} for mes in sorted(ventas_dict)]
+
+
 
     # Calcular la ganancia en el rango de fechas
     ganancia = total_ventas - total_egresos - total_costo
@@ -631,16 +670,21 @@ def dashboard():
 
     conn.close()
 
-    return render_template('dashboard.html', 
-                          total_ventas=total_ventas, 
-                          total_egresos=total_egresos, 
-                          total_costo=total_costo, 
-                          ganancia=ganancia,
-                          total_ventas_productos=total_ventas_productos,  # Asegúrate de pasar este valor
-                          total_ventas_reparaciones=total_ventas_reparaciones,  # Asegúrate de pasar este valor
-                          distribucion_ventas=distribucion_ventas,
-                          fecha_desde=fecha_desde,
-                          fecha_hasta=fecha_hasta)
+    return render_template('dashboard.html',
+    total_ventas=total_ventas, 
+    total_egresos=total_egresos, 
+    total_costo=total_costo, 
+    ganancia=ganancia,
+    total_ventas_productos=total_ventas_productos,
+    total_ventas_reparaciones=total_ventas_reparaciones,
+    distribucion_ventas=distribucion_ventas,
+    fecha_desde=fecha_desde,
+    fecha_hasta=fecha_hasta,
+    total_costo_stock=total_costo_stock,
+    total_venta_stock=total_venta_stock,
+    ventas_mensuales=ventas_mensuales,
+    cantidad_total_stock=cantidad_total_stock
+)
 
 # Ruta para resumen semanal
 @app.route('/resumen_semanal')
@@ -1080,7 +1124,7 @@ def agregar_stock():
     finally:
         conn.close()
 
-    return render_template('agregar_stock.html', productos=productos, busqueda=busqueda)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

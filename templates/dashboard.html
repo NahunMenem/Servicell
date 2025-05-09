@@ -55,8 +55,43 @@
         </div>
     </div>
 
-    <!-- Contenedor para las tablas y gráficos -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Evolución de Stock Mensual -->
+    <div class="mt-12">
+        <h2 class="text-3xl font-bold text-center mb-6">Evolución de Stock</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-gray-800 p-6 rounded-lg shadow text-center">
+                <div class="flex justify-center mb-2">
+                    <i data-lucide="dollar-sign" class="w-8 h-8 text-orange-400"></i>
+                </div>
+                <h2 class="text-xl text-gray-300">Total Stock (Costo)</h2>
+                <p class="text-3xl font-bold text-orange-400">${{ total_costo_stock }}</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-lg shadow text-center">
+                <div class="flex justify-center mb-2">
+                    <i data-lucide="shopping-cart" class="w-8 h-8 text-green-400"></i>
+                </div>
+                <h2 class="text-xl text-gray-300">Total Stock (Venta)</h2>
+                <p class="text-3xl font-bold text-green-400">${{ total_venta_stock }}</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-lg shadow text-center">
+                <div class="flex justify-center mb-2">
+                    <i data-lucide="package-check" class="w-8 h-8 text-cyan-400"></i>
+                </div>
+                <h2 class="text-xl text-gray-300">Cantidad Total en Stock</h2>
+                <p class="text-3xl font-bold text-cyan-400">{{ cantidad_total_stock }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de línea de ventas mensuales -->
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg mt-8">
+        <h2 class="text-2xl font-semibold mb-4">Ventas Totales Mensuales</h2>
+        <canvas id="ventasMensualesChart" class="w-full"></canvas>
+    </div>
+
+    <!-- Contenedor para las tablas y otros gráficos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
         <!-- Gráfico de resumen -->
         <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
             <h2 class="text-2xl font-semibold mb-4">Resumen de Ventas y Gastos</h2>
@@ -72,110 +107,105 @@
 
     <!-- Botón para volver al inicio -->
     <div class="mt-8 text-center">
-        <a href="{{ url_for('index') }}" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">Volver al Inicio</a>
+        <a href="{{ url_for('index') }}" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-300">
+            Volver al Inicio
+        </a>
     </div>
-
-    <script>
-        // Datos para el gráfico de resumen
-        const dataResumen = {
-            labels: ['Ventas', 'Egresos', 'Costos', 'Ganancia Neta'],
-            datasets: [{
-                label: 'Resumen',
-                data: [{{ total_ventas }}, {{ total_egresos }}, {{ total_costo }}, {{ ganancia }}],
-                backgroundColor: [
-                    'rgba(75, 192, 192, 0.2)',
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(255, 206, 86, 0.2)',
-                    'rgba(153, 102, 255, 0.2)'
-                ],
-                borderColor: [
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(153, 102, 255, 1)'
-                ],
-                borderWidth: 1
-            }]
-        };
-
-        // Configuración del gráfico de resumen
-        const configResumen = {
-            type: 'bar',
-            data: dataResumen,
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        },
-                        ticks: {
-                            color: 'white'
-                        }
-                    },
-                    x: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        },
-                        ticks: {
-                            color: 'white'
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: 'white'
-                        }
-                    }
-                }
-            }
-        };
-
-        // Renderizar el gráfico de resumen
-        const resumenChart = new Chart(
-            document.getElementById('resumenChart'),
-            configResumen
-        );
-
-        // Datos para el gráfico de dona (distribución de ventas)
-        const dataDistribucion = {
-            labels: {{ distribucion_ventas | map(attribute='tipo') | list | tojson }},
-            datasets: [{
-                label: 'Distribución de Ventas',
-                data: {{ distribucion_ventas | map(attribute='total') | list | tojson }},
-                backgroundColor: [
-                    'rgba(75, 192, 192, 0.2)',
-                    'rgba(255, 99, 132, 0.2)'
-                ],
-                borderColor: [
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(255, 99, 132, 1)'
-                ],
-                borderWidth: 1
-            }]
-        };
-
-        // Configuración del gráfico de dona
-        const configDistribucion = {
-            type: 'doughnut',
-            data: dataDistribucion,
-            options: {
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: 'white'
-                        }
-                    }
-                }
-            }
-        };
-
-        // Renderizar el gráfico de dona
-        const distribucionVentasChart = new Chart(
-            document.getElementById('distribucionVentasChart'),
-            configDistribucion
-        );
-    </script>
 </div>
+
+<script>
+    // Gráfico de resumen
+    const dataResumen = {
+        labels: ['Ventas', 'Egresos', 'Costos', 'Ganancia Neta'],
+        datasets: [{
+            label: 'Resumen',
+            data: [{{ total_ventas }}, {{ total_egresos }}, {{ total_costo }}, {{ ganancia }}],
+            backgroundColor: [
+                'rgba(75, 192, 192, 0.2)',
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(255, 206, 86, 0.2)',
+                'rgba(153, 102, 255, 0.2)'
+            ],
+            borderColor: [
+                'rgba(75, 192, 192, 1)',
+                'rgba(255, 99, 132, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(153, 102, 255, 1)'
+            ],
+            borderWidth: 1
+        }]
+    };
+
+    new Chart(document.getElementById('resumenChart'), {
+        type: 'bar',
+        data: dataResumen,
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                },
+                x: {
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                }
+            },
+            plugins: {
+                legend: { labels: { color: 'white' } }
+            }
+        }
+    });
+
+    // Gráfico de distribución de ventas
+    const dataDistribucion = {
+        labels: {{ distribucion_ventas | map(attribute='tipo') | list | tojson }},
+        datasets: [{
+            label: 'Distribución de Ventas',
+            data: {{ distribucion_ventas | map(attribute='total') | list | tojson }},
+            backgroundColor: ['rgba(75, 192, 192, 0.2)', 'rgba(255, 99, 132, 0.2)'],
+            borderColor: ['rgba(75, 192, 192, 1)', 'rgba(255, 99, 132, 1)'],
+            borderWidth: 1
+        }]
+    };
+
+    new Chart(document.getElementById('distribucionVentasChart'), {
+        type: 'doughnut',
+        data: dataDistribucion,
+        options: {
+            plugins: {
+                legend: { labels: { color: 'white' } }
+            }
+        }
+    });
+
+    // Gráfico de ventas mensuales
+    const ventasLabels = {{ ventas_mensuales | map(attribute='mes') | list | tojson }};
+    const ventasData = {{ ventas_mensuales | map(attribute='total') | list | tojson }};
+
+    new Chart(document.getElementById('ventasMensualesChart'), {
+        type: 'line',
+        data: {
+            labels: ventasLabels,
+            datasets: [{
+                label: 'Ventas Totales ($)',
+                data: ventasData,
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: 'white' } }
+            },
+            scales: {
+                x: { ticks: { color: 'white' } },
+                y: { ticks: { color: 'white' }, beginAtZero: true }
+            }
+        }
+    });
+</script>
 {% endblock %}
