@@ -84,26 +84,26 @@
         </div>
     </div>
 
+<!-- Contenedor para los tres gráficos uno al lado del otro -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+    <!-- Gráfico de resumen -->
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-semibold mb-4">Resumen de Ventas y Gastos</h2>
+        <canvas id="resumenChart" class="w-full"></canvas>
+    </div>
+
+    <!-- Gráfico de dona -->
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-semibold mb-4">Distribución de Ventas</h2>
+        <canvas id="distribucionVentasChart" class="w-full"></canvas>
+    </div>
+
     <!-- Gráfico de línea de ventas mensuales -->
-    <div class="bg-gray-800 p-6 rounded-lg shadow-lg mt-8">
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
         <h2 class="text-2xl font-semibold mb-4">Ventas Totales Mensuales</h2>
         <canvas id="ventasMensualesChart" class="w-full"></canvas>
     </div>
-
-    <!-- Contenedor para las tablas y otros gráficos -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        <!-- Gráfico de resumen -->
-        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 class="text-2xl font-semibold mb-4">Resumen de Ventas y Gastos</h2>
-            <canvas id="resumenChart" class="w-full"></canvas>
-        </div>
-
-        <!-- Gráfico de dona -->
-        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 class="text-2xl font-semibold mb-4">Distribución de Ventas</h2>
-            <canvas id="distribucionVentasChart" class="w-full"></canvas>
-        </div>
-    </div>
+</div>
 
     <!-- Botón para volver al inicio -->
     <div class="mt-8 text-center">
